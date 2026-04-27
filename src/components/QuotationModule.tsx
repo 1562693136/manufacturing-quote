@@ -3,6 +3,20 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { jsPDF } from 'jspdf'
+import * as XLSX from 'xlsx'
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+} from 'chart.js'
+import { Pie, Bar } from 'react-chartjs-2'
+
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title)
 
 interface MaterialItem {
   id: string
@@ -57,6 +71,7 @@ export default function QuotationModule() {
   const [savedQuotes, setSavedQuotes] = useState<QuoteTemplate[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showCharts, setShowCharts] = useState(false)
 
   useEffect(() => {
     loadSavedQuotes()
@@ -85,13 +100,11 @@ export default function QuotationModule() {
 
   function confirmNewQuote() {
     if (newQuoteMode === 'blank') {
-      // 全新空白报价
       setProduct({ code: '', name: '', spec: '', customer: '', volume: 1000 })
       setMaterials([])
       setProcesses([])
       setVersion('V1.0')
     } else if (newQuoteMode === 'copy' && selectedTemplate) {
-      // 沿用之前报价修正
       const template = savedQuotes.find(q => q.id === selectedTemplate)
       if (template) {
         setProduct({ code: template.code, name: template.name, spec: template.spec, customer: template.customer, volume: template.volume })
@@ -100,13 +113,11 @@ export default function QuotationModule() {
         setVersion(template.version)
       }
     } else if (newQuoteMode === 'version' && selectedTemplate) {
-      // 顺延V2报价
       const template = savedQuotes.find(q => q.id === selectedTemplate)
       if (template) {
         setProduct({ code: template.code, name: template.name, spec: template.spec, customer: template.customer, volume: template.volume })
         setMaterials(template.materials.length > 0 ? template.materials : [])
         setProcesses(template.processes.length > 0 ? template.processes : [])
-        // 版本号递增
         const vMatch = template.version.match(/V(\d+)\.?(\d*)/)
         if (vMatch) {
           const major = parseInt(vMatch[1])
@@ -122,28 +133,19 @@ export default function QuotationModule() {
   }
 
   function optimizeQuote() {
-    // 智能优化：基于当前成本结构给出建议
     const suggestions: string[] = []
-    
-    // 材料成本占比分析
     const materialRatio = materialCost / totalCost * 100
     if (materialRatio > 60) {
       suggestions.push(`材料成本占比${materialRatio.toFixed(1)}%偏高，建议：1)寻找替代材料 2)与供应商议价 3)优化BOM设计`)
     }
-    
-    // 人工成本分析
     const laborRatio = laborCost / totalCost * 100
     if (laborRatio > 25) {
       suggestions.push(`人工成本占比${laborRatio.toFixed(1)}%偏高，建议：1)优化工序 2)提升自动化水平`)
     }
-    
-    // 制造费用分析
     const mfgRatio = mfgCost / totalCost * 100
     if (mfgRatio > 20) {
       suggestions.push(`制造费用占比${mfgRatio.toFixed(1)}%偏高，建议：1)提高产能利用率 2)能耗管控`)
     }
-    
-    // 毛利率建议
     let suggestedMargin = targetMargin
     if (materialRatio > 50 && laborRatio > 20) {
       suggestedMargin = Math.min(30, targetMargin + 5)
@@ -152,11 +154,9 @@ export default function QuotationModule() {
       suggestedMargin = Math.max(15, targetMargin - 3)
       suggestions.push(`成本结构较优，可适度降低毛利率至${suggestedMargin}%以提升竞争力`)
     }
-    
     if (suggestions.length === 0) {
       suggestions.push('当前成本结构合理，继续保持目标毛利率')
     }
-    
     alert(`📊 智能优化分析\n\n${suggestions.join('\n\n')}`)
   }
 
@@ -164,20 +164,15 @@ export default function QuotationModule() {
     const doc = new jsPDF('p', 'mm', 'a4')
     const pageWidth = doc.internal.pageSize.getWidth()
     let y = 20
-
-    // Header
     doc.setFontSize(18)
     doc.text('制造报价单', pageWidth / 2, y, { align: 'center' })
     y += 10
-
     doc.setFontSize(10)
     doc.text(`报价单号: Q${new Date().toISOString().slice(0,10).replace(/-/g,'')}${String(Date.now()).slice(-4)}`, 20, y)
     doc.text(`版本: ${version}`, pageWidth - 20, y, { align: 'right' })
     y += 8
     doc.text(`日期: ${new Date().toLocaleDateString('zh-CN')}`, 20, y)
     y += 12
-
-    // Product Info
     doc.setFontSize(12)
     doc.text('一、产品基础信息', 20, y)
     y += 8
@@ -191,24 +186,16 @@ export default function QuotationModule() {
     ]
     info.forEach(line => { doc.text(line, 20, y); y += 6 })
     y += 4
-
-    // Materials
     doc.setFontSize(12)
     doc.text('二、直接材料成本', 20, y)
     y += 8
     doc.setFontSize(9)
-    doc.text('编码', 20, y)
-    doc.text('名称', 50, y)
-    doc.text('来源', 90, y)
-    doc.text('单价', 120, y, { align: 'center' })
-    doc.text('单耗', 145, y, { align: 'center' })
-    doc.text('损耗', 165, y, { align: 'center' })
-    doc.text('成本', 185, y, { align: 'center' })
+    doc.text('编码', 20, y); doc.text('名称', 50, y); doc.text('来源', 90, y)
+    doc.text('单价', 120, y, { align: 'center' }); doc.text('单耗', 145, y, { align: 'center' })
+    doc.text('损耗', 165, y, { align: 'center' }); doc.text('成本', 185, y, { align: 'center' })
     y += 6
     materials.forEach(m => {
-      doc.text(m.code, 20, y)
-      doc.text(m.name, 50, y)
-      doc.text(m.source, 90, y)
+      doc.text(m.code, 20, y); doc.text(m.name, 50, y); doc.text(m.source, 90, y)
       doc.text(`¥${m.unitPrice.toFixed(2)}`, 120, y, { align: 'center' })
       doc.text(`${m.qty}`, 145, y, { align: 'center' })
       doc.text(`${m.lossRate}%`, 165, y, { align: 'center' })
@@ -219,16 +206,12 @@ export default function QuotationModule() {
     doc.setFontSize(10)
     doc.text(`材料成本合计: ¥${materialCost.toFixed(2)}`, 20, y)
     y += 10
-
-    // Labor
     doc.setFontSize(12)
     doc.text('三、直接人工成本', 20, y)
     y += 8
     doc.setFontSize(9)
-    doc.text('工序', 20, y)
-    doc.text('工时(分)', 80, y, { align: 'center' })
-    doc.text('工价', 110, y, { align: 'center' })
-    doc.text('成本', 140, y, { align: 'center' })
+    doc.text('工序', 20, y); doc.text('工时(分)', 80, y, { align: 'center' })
+    doc.text('工价', 110, y, { align: 'center' }); doc.text('成本', 140, y, { align: 'center' })
     y += 6
     processes.forEach(p => {
       doc.text(`${p.code} ${p.name}`, 20, y)
@@ -241,8 +224,6 @@ export default function QuotationModule() {
     doc.setFontSize(10)
     doc.text(`人工成本合计: ¥${laborCost.toFixed(2)}`, 20, y)
     y += 10
-
-    // MFG
     doc.setFontSize(12)
     doc.text('四、制造费用', 20, y)
     y += 8
@@ -253,8 +234,6 @@ export default function QuotationModule() {
     doc.text(`设备成本: ¥${mfgRates.equip.toFixed(2)}`, 20, y); y += 6
     doc.text(`制造费用合计: ¥${mfgCost.toFixed(2)}`, 20, y)
     y += 10
-
-    // Result
     doc.setFontSize(14)
     doc.setTextColor(0, 51, 102)
     doc.text('五、报价结果', 20, y)
@@ -266,23 +245,112 @@ export default function QuotationModule() {
     doc.text(`单位毛利: ¥${(quoteNoVat - totalCost).toFixed(2)}`, 20, y); y += 7
     doc.text(`毛利率: ${targetMargin.toFixed(2)}%`, 20, y); y += 7
     doc.text(`总利润: ¥${profit.toFixed(2)}`, 20, y)
-
-    // Footer
     doc.setFontSize(9)
     doc.setTextColor(100, 100, 100)
     doc.text('本报价单由制造报价测算系统生成', pageWidth / 2, 280, { align: 'center' })
-
     doc.save(`报价单_${product.code}_${new Date().toISOString().slice(0,10)}.pdf`)
+  }
+
+  function exportToExcel() {
+    const wb = XLSX.utils.book_new()
+    const infoWs = XLSX.utils.aoa_to_sheet([
+      ['产品编码', product.code],
+      ['产品名称', product.name],
+      ['规格型号', product.spec],
+      ['客户名称', product.customer || '-'],
+      ['基准产量', product.volume],
+      ['版本号', version],
+    ])
+    XLSX.utils.book_append_sheet(wb, infoWs, '产品信息')
+    const matWs = XLSX.utils.aoa_to_sheet([
+      ['编码', '名称', '来源', '单价', '单耗', '损耗率%', '成本'],
+      ...materials.map(m => [
+        m.code, m.name, m.source, m.unitPrice, m.qty, m.lossRate,
+        m.unitPrice * m.qty * (1 + m.lossRate / 100)
+      ])
+    ])
+    XLSX.utils.book_append_sheet(wb, matWs, '直接材料')
+    const procWs = XLSX.utils.aoa_to_sheet([
+      ['工序编码', '工序名称', '工时(分)', '工价', '成本'],
+      ...processes.map(p => [
+        p.code, p.name, p.minutes, p.hourlyRate, (p.minutes / 60 * p.hourlyRate).toFixed(2)
+      ])
+    ])
+    XLSX.utils.book_append_sheet(wb, procWs, '直接人工')
+    const resultWs = XLSX.utils.aoa_to_sheet([
+      ['项目', '金额'],
+      ['直接材料成本', materialCost],
+      ['直接人工成本', laborCost],
+      ['制造费用', mfgCost],
+      ['单位完全成本', totalCost],
+      ['建议不含税报价', quoteNoVat],
+      ['含税报价', quoteWithVat],
+      ['单位毛利', quoteNoVat - totalCost],
+      ['毛利率%', targetMargin],
+      ['总利润', profit],
+    ])
+    XLSX.utils.book_append_sheet(wb, resultWs, '报价结果')
+    XLSX.writeFile(wb, `报价数据_${product.code}_${new Date().toISOString().slice(0,10)}.xlsx`)
+  }
+
+  function importFromExcel(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const data = ev.target?.result
+      if (!data) return
+      const wb = XLSX.read(data, { type: 'binary' })
+      const matWs = wb.Sheets['直接材料']
+      if (matWs) {
+        const matData = XLSX.utils.sheet_to_json<any[]>(matWs, { header: 1 })
+        const newMaterials: MaterialItem[] = []
+        for (let i = 1; i < matData.length; i++) {
+          const row = matData[i]
+          if (row[0]) {
+            newMaterials.push({
+              id: Date.now().toString() + i,
+              code: row[0] || '',
+              name: row[1] || '',
+              source: row[2] || '外购',
+              unitPrice: Number(row[3]) || 0,
+              qty: Number(row[4]) || 1,
+              lossRate: Number(row[5]) || 0,
+            })
+          }
+        }
+        if (newMaterials.length > 0) setMaterials(newMaterials)
+      }
+      const procWs = wb.Sheets['直接人工']
+      if (procWs) {
+        const procData = XLSX.utils.sheet_to_json<any[]>(procWs, { header: 1 })
+        const newProcesses: ProcessItem[] = []
+        for (let i = 1; i < procData.length; i++) {
+          const row = procData[i]
+          if (row[0]) {
+            newProcesses.push({
+              id: Date.now().toString() + i,
+              code: row[0] || '',
+              name: row[1] || '',
+              minutes: Number(row[2]) || 0,
+              hourlyRate: Number(row[3]) || 0,
+            })
+          }
+        }
+        if (newProcesses.length > 0) setProcesses(newProcesses)
+      }
+      alert('Excel数据导入成功')
+    }
+    reader.readAsBinaryString(file)
+    e.target.value = ''
   }
 
   async function saveToHistory() {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { alert('请先登录'); setLoading(false); return }
-
     const unitCost = materialCost + laborCost + mfgCost
     const quoteNoVat = unitCost / (1 - targetMargin / 100)
-
     const { error } = await supabase.from('quotations').insert({
       user_id: user.id,
       quote_no: `Q${new Date().toISOString().slice(0,10).replace(/-/g,'')}${String(Date.now()).slice(-4)}`,
@@ -304,7 +372,6 @@ export default function QuotationModule() {
         targetMargin
       }
     })
-
     setLoading(false)
     if (error) alert('保存失败: ' + error.message)
     else { alert('报价已保存到历史库'); loadSavedQuotes() }
@@ -318,6 +385,24 @@ export default function QuotationModule() {
   const quoteWithVat = quoteNoVat * (1 + other.vat / 100)
   const profit = (quoteNoVat - totalCost) * product.volume
 
+  const pieData = {
+    labels: ['直接材料', '直接人工', '制造费用'],
+    datasets: [{
+      data: [materialCost, laborCost, mfgCost],
+      backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+      borderWidth: 1,
+    }]
+  }
+
+  const barData = {
+    labels: materials.map(m => m.name),
+    datasets: [{
+      label: '材料成本',
+      data: materials.map(m => m.unitPrice * m.qty * (1 + m.lossRate / 100)),
+      backgroundColor: '#3b82f6',
+    }]
+  }
+
   return (
     <div className="space-y-6">
       {/* New Quote Modal */}
@@ -328,27 +413,17 @@ export default function QuotationModule() {
             <div className="space-y-3 mb-4">
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                 <input type="radio" name="newMode" value="blank" checked={newQuoteMode === 'blank'} onChange={() => setNewQuoteMode('blank')} />
-                <div>
-                  <div className="font-medium">全新空白报价</div>
-                  <div className="text-sm text-gray-500">从零开始创建新报价单</div>
-                </div>
+                <div><div className="font-medium">全新空白报价</div><div className="text-sm text-gray-500">从零开始创建新报价单</div></div>
               </label>
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                 <input type="radio" name="newMode" value="copy" checked={newQuoteMode === 'copy'} onChange={() => setNewQuoteMode('copy')} />
-                <div>
-                  <div className="font-medium">沿用之前报价修正</div>
-                  <div className="text-sm text-gray-500">复制已有报价数据并编辑修改</div>
-                </div>
+                <div><div className="font-medium">沿用之前报价修正</div><div className="text-sm text-gray-500">复制已有报价数据并编辑修改</div></div>
               </label>
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                 <input type="radio" name="newMode" value="version" checked={newQuoteMode === 'version'} onChange={() => setNewQuoteMode('version')} />
-                <div>
-                  <div className="font-medium">顺延V2报价</div>
-                  <div className="text-sm text-gray-500">基于已有报价创建新版本（版本号自动递增）</div>
-                </div>
+                <div><div className="font-medium">顺延V2报价</div><div className="text-sm text-gray-500">基于已有报价创建新版本（版本号自动递增）</div></div>
               </label>
             </div>
-
             {(newQuoteMode === 'copy' || newQuoteMode === 'version') && (
               <div className="mb-4">
                 <label className="block text-sm text-gray-600 mb-1">选择历史报价</label>
@@ -360,7 +435,6 @@ export default function QuotationModule() {
                 </select>
               </div>
             )}
-
             <div className="flex justify-end gap-3">
               <button className="btn-secondary" onClick={() => setShowNewQuoteModal(false)}>取消</button>
               <button className="btn-primary" onClick={confirmNewQuote}>确认</button>
@@ -375,12 +449,34 @@ export default function QuotationModule() {
           <span className="text-sm text-gray-500">版本: {version}</span>
         </div>
         <div className="flex items-center gap-3">
+          <button className="btn btn-secondary btn-sm" onClick={exportToExcel}>📥 导出Excel</button>
+          <label className="btn btn-secondary btn-sm cursor-pointer">
+            📤 导入Excel
+            <input type="file" accept=".xlsx,.xls" className="hidden" onChange={importFromExcel} />
+          </label>
+          <button className="btn btn-secondary btn-sm" onClick={() => setShowCharts(!showCharts)}>
+            {showCharts ? '隐藏图表' : '📊 成本分析图表'}
+          </button>
           <button className="btn btn-primary" onClick={createNewQuote}>➕ 新建报价</button>
           <button className="btn btn-secondary" onClick={saveToHistory} disabled={loading}>
             {loading ? '保存中...' : '💾 保存到历史库'}
           </button>
         </div>
       </div>
+
+      {/* Charts */}
+      {showCharts && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold mb-4">成本结构分布</h3>
+            <Pie data={pieData} options={{ responsive: true, plugins: { legend: { position: 'bottom' } } }} />
+          </div>
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold mb-4">材料成本明细</h3>
+            <Bar data={barData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
+          </div>
+        </div>
+      )}
 
       {/* Summary Bar */}
       <div className="grid grid-cols-5 gap-4">
