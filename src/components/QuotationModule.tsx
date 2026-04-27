@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { jsPDF } from 'jspdf'
 
 interface MaterialItem {
   id: string
@@ -118,6 +119,160 @@ export default function QuotationModule() {
     }
     setShowNewQuoteModal(false)
     setSelectedTemplate('')
+  }
+
+  function optimizeQuote() {
+    // 智能优化：基于当前成本结构给出建议
+    const suggestions: string[] = []
+    
+    // 材料成本占比分析
+    const materialRatio = materialCost / totalCost * 100
+    if (materialRatio > 60) {
+      suggestions.push(`材料成本占比${materialRatio.toFixed(1)}%偏高，建议：1)寻找替代材料 2)与供应商议价 3)优化BOM设计`)
+    }
+    
+    // 人工成本分析
+    const laborRatio = laborCost / totalCost * 100
+    if (laborRatio > 25) {
+      suggestions.push(`人工成本占比${laborRatio.toFixed(1)}%偏高，建议：1)优化工序 2)提升自动化水平`)
+    }
+    
+    // 制造费用分析
+    const mfgRatio = mfgCost / totalCost * 100
+    if (mfgRatio > 20) {
+      suggestions.push(`制造费用占比${mfgRatio.toFixed(1)}%偏高，建议：1)提高产能利用率 2)能耗管控`)
+    }
+    
+    // 毛利率建议
+    let suggestedMargin = targetMargin
+    if (materialRatio > 50 && laborRatio > 20) {
+      suggestedMargin = Math.min(30, targetMargin + 5)
+      suggestions.push(`成本结构较复杂，建议毛利率提升至${suggestedMargin}%`)
+    } else if (materialRatio < 40 && laborRatio < 15) {
+      suggestedMargin = Math.max(15, targetMargin - 3)
+      suggestions.push(`成本结构较优，可适度降低毛利率至${suggestedMargin}%以提升竞争力`)
+    }
+    
+    if (suggestions.length === 0) {
+      suggestions.push('当前成本结构合理，继续保持目标毛利率')
+    }
+    
+    alert(`📊 智能优化分析\n\n${suggestions.join('\n\n')}`)
+  }
+
+  async function generatePDF() {
+    const doc = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = doc.internal.pageSize.getWidth()
+    let y = 20
+
+    // Header
+    doc.setFontSize(18)
+    doc.text('制造报价单', pageWidth / 2, y, { align: 'center' })
+    y += 10
+
+    doc.setFontSize(10)
+    doc.text(`报价单号: Q${new Date().toISOString().slice(0,10).replace(/-/g,'')}${String(Date.now()).slice(-4)}`, 20, y)
+    doc.text(`版本: ${version}`, pageWidth - 20, y, { align: 'right' })
+    y += 8
+    doc.text(`日期: ${new Date().toLocaleDateString('zh-CN')}`, 20, y)
+    y += 12
+
+    // Product Info
+    doc.setFontSize(12)
+    doc.text('一、产品基础信息', 20, y)
+    y += 8
+    doc.setFontSize(10)
+    const info = [
+      `产品编码: ${product.code}`,
+      `产品名称: ${product.name}`,
+      `规格型号: ${product.spec}`,
+      `客户名称: ${product.customer || '-'}`,
+      `基准产量: ${product.volume}件`,
+    ]
+    info.forEach(line => { doc.text(line, 20, y); y += 6 })
+    y += 4
+
+    // Materials
+    doc.setFontSize(12)
+    doc.text('二、直接材料成本', 20, y)
+    y += 8
+    doc.setFontSize(9)
+    doc.text('编码', 20, y)
+    doc.text('名称', 50, y)
+    doc.text('来源', 90, y)
+    doc.text('单价', 120, y, { align: 'center' })
+    doc.text('单耗', 145, y, { align: 'center' })
+    doc.text('损耗', 165, y, { align: 'center' })
+    doc.text('成本', 185, y, { align: 'center' })
+    y += 6
+    materials.forEach(m => {
+      doc.text(m.code, 20, y)
+      doc.text(m.name, 50, y)
+      doc.text(m.source, 90, y)
+      doc.text(`¥${m.unitPrice.toFixed(2)}`, 120, y, { align: 'center' })
+      doc.text(`${m.qty}`, 145, y, { align: 'center' })
+      doc.text(`${m.lossRate}%`, 165, y, { align: 'center' })
+      const cost = m.unitPrice * m.qty * (1 + m.lossRate / 100)
+      doc.text(`¥${cost.toFixed(2)}`, 185, y, { align: 'center' })
+      y += 5
+    })
+    doc.setFontSize(10)
+    doc.text(`材料成本合计: ¥${materialCost.toFixed(2)}`, 20, y)
+    y += 10
+
+    // Labor
+    doc.setFontSize(12)
+    doc.text('三、直接人工成本', 20, y)
+    y += 8
+    doc.setFontSize(9)
+    doc.text('工序', 20, y)
+    doc.text('工时(分)', 80, y, { align: 'center' })
+    doc.text('工价', 110, y, { align: 'center' })
+    doc.text('成本', 140, y, { align: 'center' })
+    y += 6
+    processes.forEach(p => {
+      doc.text(`${p.code} ${p.name}`, 20, y)
+      doc.text(`${p.minutes}`, 80, y, { align: 'center' })
+      doc.text(`¥${p.hourlyRate}/h`, 110, y, { align: 'center' })
+      const cost = (p.minutes / 60) * p.hourlyRate
+      doc.text(`¥${cost.toFixed(2)}`, 140, y, { align: 'center' })
+      y += 5
+    })
+    doc.setFontSize(10)
+    doc.text(`人工成本合计: ¥${laborCost.toFixed(2)}`, 20, y)
+    y += 10
+
+    // MFG
+    doc.setFontSize(12)
+    doc.text('四、制造费用', 20, y)
+    y += 8
+    doc.setFontSize(10)
+    doc.text(`水电能耗: ¥${mfgRates.energy.toFixed(2)}`, 20, y); y += 6
+    doc.text(`车间管理: ¥${mfgRates.manage.toFixed(2)}`, 20, y); y += 6
+    doc.text(`辅料消耗: ¥${mfgRates.material.toFixed(2)}`, 20, y); y += 6
+    doc.text(`设备成本: ¥${mfgRates.equip.toFixed(2)}`, 20, y); y += 6
+    doc.text(`制造费用合计: ¥${mfgCost.toFixed(2)}`, 20, y)
+    y += 10
+
+    // Result
+    doc.setFontSize(14)
+    doc.setTextColor(0, 51, 102)
+    doc.text('五、报价结果', 20, y)
+    y += 10
+    doc.setFontSize(11)
+    doc.text(`单位完全成本: ¥${totalCost.toFixed(2)}`, 20, y); y += 7
+    doc.text(`建议不含税报价: ¥${quoteNoVat.toFixed(2)}`, 20, y); y += 7
+    doc.text(`含税报价: ¥${quoteWithVat.toFixed(2)}`, 20, y); y += 7
+    doc.text(`单位毛利: ¥${(quoteNoVat - totalCost).toFixed(2)}`, 20, y); y += 7
+    doc.text(`毛利率: ${targetMargin.toFixed(2)}%`, 20, y); y += 7
+    doc.text(`总利润: ¥${profit.toFixed(2)}`, 20, y)
+
+    // Footer
+    doc.setFontSize(9)
+    doc.setTextColor(100, 100, 100)
+    doc.text('本报价单由制造报价测算系统生成', pageWidth / 2, 280, { align: 'center' })
+
+    doc.save(`报价单_${product.code}_${new Date().toISOString().slice(0,10)}.pdf`)
   }
 
   async function saveToHistory() {
@@ -401,7 +556,8 @@ export default function QuotationModule() {
           <label className="text-sm">目标毛利率:</label>
           <input type="number" className="input w-24" value={targetMargin} onChange={e => setTargetMargin(Number(e.target.value))} />
           <span>%</span>
-          <button className="btn-primary">🎯 智能优化报价</button>
+          <button className="btn-primary" onClick={generatePDF}>📄 导出PDF报价单</button>
+          <button className="btn-primary" onClick={optimizeQuote}>🎯 智能优化报价</button>
           <button className="btn-secondary" onClick={saveToHistory} disabled={loading}>
             {loading ? '保存中...' : '💾 保存到历史库'}
           </button>
