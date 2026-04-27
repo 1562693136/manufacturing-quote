@@ -2,34 +2,26 @@
 
 Next.js + Supabase 全栈应用
 
-## 快速部署
+## ⚡ 一键部署（推荐）
 
-### 1. Supabase 配置
+### 方式1：Vercel 直接上传（无需GitHub）
 
-1. 访问 [supabase.com](https://supabase.com) 注册/登录
-2. 创建新项目，复制 **Project URL** 和 **anon public API Key**
-3. 进入项目 → SQL Editor → 执行 `supabase_schema.sql`
+1. 访问 [vercel.com/new](https://vercel.com/new)
+2. 选择 **Upload** 选项
+3. 上传本项目文件夹（或zip文件）
+4. 在 Environment Variables 中添加：
+   - `NEXT_PUBLIC_SUPABASE_URL` = https://weglmkqcdybcltxcccqr.supabase.co
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlZ2xta3FjZHliY2x0eGNjY3FyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNzE0NDEsImV4cCI6MjA5Mjg0NzQ0MX0.V3z9h7s-5sdrJdq7RyP9PaKQTWn2UPlXYCxosn7yOfs
+5. 点击 Deploy，约2分钟后获得访问链接
 
-### 2. 环境变量
-
-在项目根目录创建 `.env.local`：
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://你的项目.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=你的anon_key
-```
-
-### 3. 本地开发
+### 方式2：Vercel CLI 部署
 
 ```bash
+# 安装依赖
 npm install
-npm run dev
-# 访问 http://localhost:3000
-```
 
-### 4. 生产部署（Vercel）
+# 设置环境变量（已配置在 .env.local）
 
-```bash
 # 安装 Vercel CLI
 npm i -g vercel
 
@@ -38,23 +30,29 @@ vercel login
 vercel --prod
 ```
 
-或在 Vercel Dashboard 中：
-1. Import Git 仓库
-2. 设置环境变量（同上）
-3. 自动构建部署
-
-### 5. 其他静态托管
+### 方式3：其他平台
 
 ```bash
+npm install
 npm run build
 # 部署 out/ 目录到任意静态托管
 ```
+
+## 数据库初始化
+
+部署完成后，必须在 Supabase SQL Editor 中执行 `supabase_schema.sql`：
+
+1. 登录 [supabase.com](https://supabase.com)
+2. 进入项目 → SQL Editor
+3. 粘贴 `supabase_schema.sql` 内容
+4. 点击 Run
 
 ## 功能模块
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | 产品报价测算 | ✅ | 含新建/沿用/顺延三种模式 |
+| 自定义字段 | ✅ | 6种类型，参与计算导出 |
 | 阶梯报价 | ✅ | 阶梯系数+模拟计算 |
 | 设备投资梯度 | ✅ | 设备成本分摊+产能利用率 |
 | 三量动态关联 | ✅ | MOQ校验+批量倍数 |
@@ -65,9 +63,9 @@ npm run build
 | BOM层级管理 | ✅ | 半成品/原材料/关系/展开 |
 | 报价历史查询 | ✅ | 搜索+分页+版本对比 |
 | SOP与权限 | ✅ | 角色/用户/文档编辑 |
-| PDF导出 | 🔄 | 开发中 |
-| Excel导入导出 | 🔄 | 开发中 |
-| 数据图表 | 🔄 | 开发中 |
+| PDF导出 | ✅ | 完整报价单PDF |
+| Excel导入导出 | ✅ | 多Sheet数据交换 |
+| 数据图表 | ✅ | 成本结构饼图+柱状图 |
 
 ## 技术栈
 
@@ -75,7 +73,9 @@ npm run build
 - React 18 + TypeScript
 - Tailwind CSS
 - Supabase (PostgreSQL + Auth)
-- Lucide React (图标)
+- Chart.js (数据图表)
+- jsPDF (PDF导出)
+- xlsx (Excel处理)
 
 ## 角色权限
 
@@ -90,7 +90,3 @@ npm run build
 - V{major}.{minor} 格式
 - 顺延模式：minor 自动 +1
 - 全新报价：从 V1.0 开始
-
-## 联系方式
-
-部署遇到问题随时反馈。
