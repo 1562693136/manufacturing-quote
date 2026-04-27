@@ -138,3 +138,44 @@ create policy "Users can CRUD own bom_relations"
   to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Custom fields table (per quote template)
+create table quote_custom_fields (
+  id uuid primary key default gen_random_uuid(),
+  quote_id uuid references quotations on delete cascade not null,
+  field_name text not null,
+  field_type text check (field_type in ('text','number','date','select','multiselect','currency')) default 'text',
+  is_required boolean default false,
+  default_value text,
+  options jsonb default '[]',
+  sort_order integer default 0,
+  created_at timestamp with time zone default now()
+);
+
+alter table quote_custom_fields enable row level security;
+
+create policy "Users can CRUD own custom fields"
+  on quote_custom_fields for all
+  to authenticated
+  using (quote_id in (select id from quotations where user_id = auth.uid()))
+  with check (quote_id in (select id from quotations where user_id = auth.uid()));
+
+-- Quote relations table (version lineage)
+create table quote_relations (
+  id uuid primary key default gen_random_uuid(),
+  parent_quote_id uuid references quotations on delete cascade,
+  child_quote_id uuid references quotations on delete cascade not null,
+  relation_type text check (relation_type in ('version','copy','edit')) default 'copy',
+  created_at timestamp with time zone default now()
+);
+
+alter table quote_relations enable row level security;
+
+create policy "Users can view own quote relations"
+  on quote_relations for select
+  to authenticated
+  using (child_quote_id in (select id from quotations where user_id = auth.uid()));
+
+-- Add search index on quotations
+create index idx_quotations_search on quotations(user_id, product_name, product_code, customer, quote_no);
+create index idx_quotations_created on quotations(user_id, created_at desc);

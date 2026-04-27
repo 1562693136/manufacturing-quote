@@ -36,6 +36,16 @@ interface ProcessItem {
   hourlyRate: number
 }
 
+interface CustomField {
+  id: string
+  name: string
+  type: 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'currency'
+  required: boolean
+  defaultValue: string
+  options: string[]
+  value: string | number
+}
+
 interface QuoteTemplate {
   id: string
   code: string
@@ -46,6 +56,7 @@ interface QuoteTemplate {
   materials: MaterialItem[]
   processes: ProcessItem[]
   version: string
+  customFields?: CustomField[]
 }
 
 export default function QuotationModule() {
@@ -72,13 +83,21 @@ export default function QuotationModule() {
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [loading, setLoading] = useState(false)
   const [showCharts, setShowCharts] = useState(false)
+  const [customFields, setCustomFields] = useState<CustomField[]>([])
+  const [showCustomFieldModal, setShowCustomFieldModal] = useState(false)
+  const [newFieldName, setNewFieldName] = useState('')
+  const [newFieldType, setNewFieldType] = useState<CustomField['type']>('text')
+  const [newFieldRequired, setNewFieldRequired] = useState(false)
+  const [newFieldDefault, setNewFieldDefault] = useState('')
+  const [newFieldOptions, setNewFieldOptions] = useState('')
+  const [parentQuoteId, setParentQuoteId] = useState<string | null>(null)
 
   useEffect(() => {
     loadSavedQuotes()
   }, [])
 
   async function loadSavedQuotes() {
-    const { data } = await supabase.from('quotations').select('*').order('created_at', { ascending: false }).limit(20)
+    const { data } = await supabase.from('quotations').select('*').order('created_at', { ascending: false }).limit(50)
     if (data) {
       setSavedQuotes(data.map(q => ({
         id: q.id,
@@ -89,7 +108,8 @@ export default function QuotationModule() {
         volume: q.volume,
         materials: q.data_snapshot?.materials || [],
         processes: q.data_snapshot?.processes || [],
-        version: q.quote_no || 'V1.0'
+        version: q.data_snapshot?.version || 'V1.0',
+        customFields: q.data_snapshot?.customFields || []
       })))
     }
   }
@@ -103,33 +123,60 @@ export default function QuotationModule() {
       setProduct({ code: '', name: '', spec: '', customer: '', volume: 1000 })
       setMaterials([])
       setProcesses([])
+      setCustomFields([])
       setVersion('V1.0')
-    } else if (newQuoteMode === 'copy' && selectedTemplate) {
+      setParentQuoteId(null)
+    } else if ((newQuoteMode === 'copy' || newQuoteMode === 'version') && selectedTemplate) {
       const template = savedQuotes.find(q => q.id === selectedTemplate)
       if (template) {
         setProduct({ code: template.code, name: template.name, spec: template.spec, customer: template.customer, volume: template.volume })
-        setMaterials(template.materials.length > 0 ? template.materials : [])
-        setProcesses(template.processes.length > 0 ? template.processes : [])
-        setVersion(template.version)
-      }
-    } else if (newQuoteMode === 'version' && selectedTemplate) {
-      const template = savedQuotes.find(q => q.id === selectedTemplate)
-      if (template) {
-        setProduct({ code: template.code, name: template.name, spec: template.spec, customer: template.customer, volume: template.volume })
-        setMaterials(template.materials.length > 0 ? template.materials : [])
-        setProcesses(template.processes.length > 0 ? template.processes : [])
-        const vMatch = template.version.match(/V(\d+)\.?(\d*)/)
-        if (vMatch) {
-          const major = parseInt(vMatch[1])
-          const minor = vMatch[2] ? parseInt(vMatch[2]) : 0
-          setVersion(`V${major}.${minor + 1}`)
+        setMaterials(template.materials.length > 0 ? template.materials.map(m => ({ ...m, id: Date.now().toString() + Math.random() })) : [])
+        setProcesses(template.processes.length > 0 ? template.processes.map(p => ({ ...p, id: Date.now().toString() + Math.random() })) : [])
+        setCustomFields(template.customFields ? template.customFields.map(f => ({ ...f, id: Date.now().toString() + Math.random() })) : [])
+        setParentQuoteId(template.id)
+        
+        if (newQuoteMode === 'version') {
+          const vMatch = template.version?.match(/V(\d+)\.?(\d*)/)
+          if (vMatch) {
+            const major = parseInt(vMatch[1])
+            const minor = vMatch[2] ? parseInt(vMatch[2]) : 0
+            setVersion(`V${major}.${minor + 1}`)
+          } else {
+            setVersion('V2.0')
+          }
         } else {
-          setVersion('V2.0')
+          setVersion(template.version || 'V1.0')
         }
       }
     }
     setShowNewQuoteModal(false)
     setSelectedTemplate('')
+  }
+
+  function addCustomField() {
+    if (!newFieldName.trim()) return
+    const newField: CustomField = {
+      id: Date.now().toString(),
+      name: newFieldName,
+      type: newFieldType,
+      required: newFieldRequired,
+      defaultValue: newFieldDefault,
+      options: newFieldOptions.split(',').map(s => s.trim()).filter(Boolean),
+      value: newFieldType === 'number' || newFieldType === 'currency' ? Number(newFieldDefault) || 0 : newFieldDefault,
+    }
+    setCustomFields([...customFields, newField])
+    setNewFieldName('')
+    setNewFieldDefault('')
+    setNewFieldOptions('')
+    setShowCustomFieldModal(false)
+  }
+
+  function updateCustomFieldValue(id: string, value: string | number) {
+    setCustomFields(customFields.map(f => f.id === id ? { ...f, value } : f))
+  }
+
+  function removeCustomField(id: string) {
+    setCustomFields(customFields.filter(f => f.id !== id))
   }
 
   function optimizeQuote() {
@@ -185,6 +232,20 @@ export default function QuotationModule() {
       `基准产量: ${product.volume}件`,
     ]
     info.forEach(line => { doc.text(line, 20, y); y += 6 })
+    
+    // Custom Fields
+    if (customFields.length > 0) {
+      y += 4
+      doc.setFontSize(12)
+      doc.text('自定义字段', 20, y)
+      y += 8
+      doc.setFontSize(10)
+      customFields.forEach(f => {
+        doc.text(`${f.name}: ${f.value || '-'}`, 20, y)
+        y += 6
+      })
+    }
+    
     y += 4
     doc.setFontSize(12)
     doc.text('二、直接材料成本', 20, y)
@@ -260,6 +321,7 @@ export default function QuotationModule() {
       ['客户名称', product.customer || '-'],
       ['基准产量', product.volume],
       ['版本号', version],
+      ...customFields.map(f => [f.name, f.value]),
     ])
     XLSX.utils.book_append_sheet(wb, infoWs, '产品信息')
     const matWs = XLSX.utils.aoa_to_sheet([
@@ -288,6 +350,7 @@ export default function QuotationModule() {
       ['单位毛利', quoteNoVat - totalCost],
       ['毛利率%', targetMargin],
       ['总利润', profit],
+      ...customFields.filter(f => f.type === 'number' || f.type === 'currency').map(f => [f.name, f.value]),
     ])
     XLSX.utils.book_append_sheet(wb, resultWs, '报价结果')
     XLSX.writeFile(wb, `报价数据_${product.code}_${new Date().toISOString().slice(0,10)}.xlsx`)
@@ -345,15 +408,50 @@ export default function QuotationModule() {
     e.target.value = ''
   }
 
-  async function saveToHistory() {
+  async function saveToHistory(saveMode: 'new' | 'overwrite' = 'new') {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { alert('请先登录'); setLoading(false); return }
+
     const unitCost = materialCost + laborCost + mfgCost
     const quoteNoVat = unitCost / (1 - targetMargin / 100)
-    const { error } = await supabase.from('quotations').insert({
+    const quoteNo = `Q${new Date().toISOString().slice(0,10).replace(/-/g,'')}${String(Date.now()).slice(-4)}`
+
+    const snapshot = {
+      spec: product.spec,
+      materials,
+      processes,
+      mfgRates,
+      periodRates,
+      other,
+      version,
+      targetMargin,
+      customFields
+    }
+
+    if (saveMode === 'overwrite' && parentQuoteId) {
+      // Update existing quote
+      const { error } = await supabase.from('quotations').update({
+        product_code: product.code || 'NEW',
+        product_name: product.name || '新报价',
+        customer: product.customer,
+        volume: product.volume,
+        unit_cost: unitCost,
+        quote_price: quoteNoVat,
+        margin_rate: targetMargin,
+        data_snapshot: snapshot
+      }).eq('id', parentQuoteId)
+      
+      setLoading(false)
+      if (error) alert('保存失败: ' + error.message)
+      else { alert('报价已更新'); loadSavedQuotes() }
+      return
+    }
+
+    // Insert new quote
+    const { data: insertData, error } = await supabase.from('quotations').insert({
       user_id: user.id,
-      quote_no: `Q${new Date().toISOString().slice(0,10).replace(/-/g,'')}${String(Date.now()).slice(-4)}`,
+      quote_no: quoteNo,
       product_code: product.code || 'NEW',
       product_name: product.name || '新报价',
       customer: product.customer,
@@ -361,20 +459,44 @@ export default function QuotationModule() {
       unit_cost: unitCost,
       quote_price: quoteNoVat,
       margin_rate: targetMargin,
-      data_snapshot: {
-        spec: product.spec,
-        materials,
-        processes,
-        mfgRates,
-        periodRates,
-        other,
-        version,
-        targetMargin
-      }
-    })
+      data_snapshot: snapshot
+    }).select()
+
+    if (error) {
+      setLoading(false)
+      alert('保存失败: ' + error.message)
+      return
+    }
+
+    const quoteId = insertData?.[0]?.id
+
+    // Save relation if has parent
+    if (parentQuoteId && quoteId) {
+      await supabase.from('quote_relations').insert({
+        parent_quote_id: parentQuoteId,
+        child_quote_id: quoteId,
+        relation_type: newQuoteMode === 'version' ? 'version' : 'copy'
+      })
+    }
+
+    // Save custom fields to dedicated table
+    if (customFields.length > 0 && quoteId) {
+      await supabase.from('quote_custom_fields').insert(
+        customFields.map(f => ({
+          quote_id: quoteId,
+          field_name: f.name,
+          field_type: f.type,
+          is_required: f.required,
+          default_value: f.defaultValue,
+          options: f.options
+        }))
+      )
+    }
+
     setLoading(false)
-    if (error) alert('保存失败: ' + error.message)
-    else { alert('报价已保存到历史库'); loadSavedQuotes() }
+    alert(saveMode === 'overwrite' ? '报价已更新' : '报价已保存到历史库')
+    setParentQuoteId(null)
+    loadSavedQuotes()
   }
 
   const materialCost = materials.reduce((sum, m) => sum + (m.unitPrice * m.qty * (1 + m.lossRate / 100)), 0)
@@ -413,15 +535,15 @@ export default function QuotationModule() {
             <div className="space-y-3 mb-4">
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                 <input type="radio" name="newMode" value="blank" checked={newQuoteMode === 'blank'} onChange={() => setNewQuoteMode('blank')} />
-                <div><div className="font-medium">全新空白报价</div><div className="text-sm text-gray-500">从零开始创建新报价单</div></div>
+                <div><div className="font-medium">全新空白报价</div><div className="text-sm text-gray-500">从零开始创建新报价单（默认版本V1）</div></div>
               </label>
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                 <input type="radio" name="newMode" value="copy" checked={newQuoteMode === 'copy'} onChange={() => setNewQuoteMode('copy')} />
-                <div><div className="font-medium">沿用之前报价修正</div><div className="text-sm text-gray-500">复制已有报价数据并编辑修改</div></div>
+                <div><div className="font-medium">基于已有报价修正</div><div className="text-sm text-gray-500">复制已有报价数据并编辑修改，保留关联</div></div>
               </label>
               <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                 <input type="radio" name="newMode" value="version" checked={newQuoteMode === 'version'} onChange={() => setNewQuoteMode('version')} />
-                <div><div className="font-medium">顺延V2报价</div><div className="text-sm text-gray-500">基于已有报价创建新版本（版本号自动递增）</div></div>
+                <div><div className="font-medium">顺延版本报价</div><div className="text-sm text-gray-500">基于已有报价创建新版本（版本号自动递增）</div></div>
               </label>
             </div>
             {(newQuoteMode === 'copy' || newQuoteMode === 'version') && (
@@ -443,10 +565,55 @@ export default function QuotationModule() {
         </div>
       )}
 
+      {/* Custom Field Modal */}
+      {showCustomFieldModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
+            <h3 className="text-xl font-bold mb-4">添加自定义字段</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">字段名称</label>
+                <input className="input" value={newFieldName} onChange={e => setNewFieldName(e.target.value)} placeholder="例如：特殊工艺费" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">字段类型</label>
+                <select className="input" value={newFieldType} onChange={e => setNewFieldType(e.target.value as CustomField['type'])}>
+                  <option value="text">文本</option>
+                  <option value="number">数字</option>
+                  <option value="date">日期</option>
+                  <option value="select">单选</option>
+                  <option value="multiselect">多选</option>
+                  <option value="currency">金额</option>
+                </select>
+              </div>
+              {(newFieldType === 'select' || newFieldType === 'multiselect') && (
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">选项（用逗号分隔）</label>
+                  <input className="input" value={newFieldOptions} onChange={e => setNewFieldOptions(e.target.value)} placeholder="选项A,选项B,选项C" />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">默认值</label>
+                <input className="input" value={newFieldDefault} onChange={e => setNewFieldDefault(e.target.value)} />
+              </div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={newFieldRequired} onChange={e => setNewFieldRequired(e.target.checked)} />
+                <span className="text-sm">必填</span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <button className="btn-secondary" onClick={() => setShowCustomFieldModal(false)}>取消</button>
+              <button className="btn-primary" onClick={addCustomField}>添加</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">版本: {version}</span>
+          {parentQuoteId && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">关联报价</span>}
         </div>
         <div className="flex items-center gap-3">
           <button className="btn btn-secondary btn-sm" onClick={exportToExcel}>📥 导出Excel</button>
@@ -458,7 +625,7 @@ export default function QuotationModule() {
             {showCharts ? '隐藏图表' : '📊 成本分析图表'}
           </button>
           <button className="btn btn-primary" onClick={createNewQuote}>➕ 新建报价</button>
-          <button className="btn btn-secondary" onClick={saveToHistory} disabled={loading}>
+          <button className="btn btn-secondary" onClick={() => saveToHistory('new')} disabled={loading}>
             {loading ? '保存中...' : '💾 保存到历史库'}
           </button>
         </div>
@@ -520,6 +687,61 @@ export default function QuotationModule() {
             </div>
           </div>
         </div>
+
+        {/* Custom Fields */}
+        {customFields.length > 0 && (
+          <div className="card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">📝 自定义字段</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowCustomFieldModal(true)}>+ 添加字段</button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {customFields.map(f => (
+                <div key={f.id} className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-600 mb-1">{f.name}{f.required && <span className="text-red-500">*</span>}</label>
+                    {f.type === 'select' ? (
+                      <select className="input" value={f.value as string} onChange={e => updateCustomFieldValue(f.id, e.target.value)}>
+                        <option value="">请选择</option>
+                        {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : f.type === 'multiselect' ? (
+                      <div className="space-y-1">
+                        {f.options.map(o => (
+                          <label key={o} className="flex items-center gap-2 text-sm">
+                            <input type="checkbox" checked={(f.value as string)?.includes(o)} onChange={e => {
+                              const current = ((f.value as string) || '').split(',').filter(Boolean)
+                              const updated = e.target.checked ? [...current, o] : current.filter(c => c !== o)
+                              updateCustomFieldValue(f.id, updated.join(','))
+                            }} />
+                            {o}
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <input
+                        type={f.type === 'number' || f.type === 'currency' ? 'number' : f.type === 'date' ? 'date' : 'text'}
+                        className="input"
+                        value={f.value}
+                        onChange={e => updateCustomFieldValue(f.id, f.type === 'number' || f.type === 'currency' ? Number(e.target.value) : e.target.value)}
+                      />
+                    )}
+                  </div>
+                  <button className="text-red-500 text-sm mt-5" onClick={() => removeCustomField(f.id)}>删除</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Add Custom Field Card when empty */}
+        {customFields.length === 0 && (
+          <div className="card p-6 flex items-center justify-center">
+            <button className="btn btn-secondary" onClick={() => setShowCustomFieldModal(true)}>
+              ➕ 添加自定义字段（支持文本、数字、日期、单选、多选、金额）
+            </button>
+          </div>
+        )}
 
         {/* Material Cost */}
         <div className="card p-6">
@@ -648,15 +870,20 @@ export default function QuotationModule() {
             </div>
           ))}
         </div>
-        <div className="mt-4 flex items-center gap-4">
+        <div className="mt-4 flex items-center gap-4 flex-wrap">
           <label className="text-sm">目标毛利率:</label>
           <input type="number" className="input w-24" value={targetMargin} onChange={e => setTargetMargin(Number(e.target.value))} />
           <span>%</span>
           <button className="btn-primary" onClick={generatePDF}>📄 导出PDF报价单</button>
           <button className="btn-primary" onClick={optimizeQuote}>🎯 智能优化报价</button>
-          <button className="btn-secondary" onClick={saveToHistory} disabled={loading}>
-            {loading ? '保存中...' : '💾 保存到历史库'}
+          <button className="btn-secondary" onClick={() => saveToHistory('new')} disabled={loading}>
+            {loading ? '保存中...' : '💾 保存到新版本'}
           </button>
+          {parentQuoteId && (
+            <button className="btn-secondary" onClick={() => saveToHistory('overwrite')} disabled={loading}>
+              {loading ? '保存中...' : '💾 覆盖原报价'}
+            </button>
+          )}
         </div>
       </div>
     </div>
