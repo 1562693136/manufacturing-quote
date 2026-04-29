@@ -2909,6 +2909,13 @@ function onProductSelectorChange() {
     }
 }
 
+function getProductByCode(code) {
+    for (var i = 0; i < appData.products.length; i++) {
+        if (appData.products[i].productCode === code) { return appData.products[i]; }
+    }
+    return null;
+}
+
 function getProductQuotes(code) {
     var result = [];
     var prod = null;
@@ -3627,6 +3634,7 @@ function confirmFinalPrice() {
     if (finalPrice < unitCost) {
         if (!confirm('最终报价低于单位完全成本，确定要确认吗？')) return;
     }
+    
     // 保存到当前产品
     var code = appData.currentProductCode || currentProductCode;
     syncCurrentProductToArray();
@@ -3641,10 +3649,90 @@ function confirmFinalPrice() {
         appData.products[idx].priceStatus = 'confirmed';
         appData.products[idx].confirmedAt = new Date().toISOString();
     }
+    
+    // 生成报价历史记录
+    var now = new Date();
+    var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    var dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    
+    // 获取产品信息
+    var prod = getProductByCode(code);
+    var productName = prod && prod.product ? prod.product.name : '';
+    var spec = prod && prod.product ? prod.product.spec : '';
+    var customer = prod && prod.product ? prod.product.customer : '';
+    var volume = prod && prod.product ? (parseFloat(prod.product.volume) || 5000) : 5000;
+    
+    // 生成报价编号
+    var quoteNo = 'Q' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + String(Math.floor(Math.random() * 900) + 100);
+    
+    // 获取最新ID
+    var newId = 1;
+    if (appData.quotations) {
+        for (var j = 0; j < appData.quotations.length; j++) {
+            if (appData.quotations[j].id >= newId) newId = appData.quotations[j].id + 1;
+        }
+    }
+    
+    // 计算毛利率
+    var margin = finalPrice > 0 ? ((finalPrice - unitCost) / finalPrice * 100) : 0;
+    
+    // 创建报价记录
+    var quoteRecord = {
+        id: newId,
+        quoteNo: quoteNo,
+        quoteDate: dateStr,
+        quoteAmount: finalPrice,
+        version: 'V1.0',
+        status: 'published',
+        productCode: code,
+        productName: productName,
+        spec: spec,
+        customer: customer,
+        volume: volume,
+        unitCost: unitCost,
+        margin: margin.toFixed(2),
+        createTime: timeStr,
+        costVersion: code + '_V1.0',
+        costSnapshotId: 'CS_' + Date.now(),
+        operator: '系统',
+        source: '价格确认'
+    };
+    
+    // 保存到全局报价列表
+    if (!appData.quotations) appData.quotations = [];
+    appData.quotations.push(quoteRecord);
+    
+    // 同步到产品数据
+    if (idx >= 0) {
+        if (!appData.products[idx].quotations) appData.products[idx].quotations = [];
+        appData.products[idx].quotations.push(quoteRecord);
+        
+        // 同时更新quotationHistory
+        if (!appData.products[idx].quotationHistory) appData.products[idx].quotationHistory = [];
+        appData.products[idx].quotationHistory.push({
+            id: newId,
+            quoteNo: quoteNo,
+            productCode: code,
+            productName: productName,
+            customer: customer,
+            volume: volume,
+            unitCost: unitCost,
+            quote: finalPrice,
+            margin: margin.toFixed(2),
+            createTime: timeStr,
+            operator: '系统'
+        });
+    }
+    
     saveToStorage();
     document.getElementById('price-confirm-status').textContent = '已确认';
     document.getElementById('price-confirm-status').style.cssText = 'font-size:12px;padding:2px 8px;border-radius:4px;background:#dcfce7;color:#166534';
-    alert('✅ 价格已确认\n产品：' + code + '\n单位完全成本：¥' + unitCost.toFixed(2) + '\n最终报价：¥' + finalPrice.toFixed(2) + '\n毛利率：' + ((finalPrice - unitCost) / finalPrice * 100).toFixed(1) + '%');
+    
+    // 刷新相关列表
+    if (typeof renderQuoteList === 'function') renderQuoteList();
+    if (typeof renderHistoryList === 'function') renderHistoryList();
+    
+    alert('✅ 价格已确认\n产品：' + code + '\n报价编号：' + quoteNo + '\n单位完全成本：¥' + unitCost.toFixed(2) + '\n最终报价：¥' + finalPrice.toFixed(2) + '\n毛利率：' + margin.toFixed(1) + '%\n\n已保存到报价历史库，可在「报价历史查询」中查看。');
 }
 
 function goToCostMaintain() {
