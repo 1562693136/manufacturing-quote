@@ -2531,7 +2531,7 @@
 </div>
 <!-- PAGE: 最优成本测算 -->
 <section id="page-optimal-cost" class="page-section">
-    <!-- 特性配置 -->
+    <!-- 特性配置 — 横向标题卡片模式 -->
     <div class="card">
         <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
             <div class="card-title">⚙️ 自定义生产特性配置</div>
@@ -2541,8 +2541,8 @@
             </div>
         </div>
         <div class="card-body">
-            <div id="oc-conditions-list"></div>
-            <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+            <div id="oc-conditions-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
+            <div style="margin-top:16px;display:flex;gap:8px;align-items:center">
                 <select id="oc-template-select" style="width:180px;font-size:13px"><option value="">-- 选择预设模板 --</option></select>
                 <button class="btn btn-secondary btn-sm" onclick="loadTemplate()">加载模板</button>
                 <button class="btn btn-secondary btn-sm" onclick="saveAsTemplate()">保存为模板</button>
@@ -7970,22 +7970,35 @@ function renderOptimalCostPage() {
     var page = document.getElementById('page-optimal-cost');
     if (!page) return;
     var oc = getOptimalCostData();
-    // 特性配置
+    // 特性配置 — 横向标题卡片模式
     var condHtml = '';
     for (var i = 0; i < oc.conditions.length; i++) {
         var c = oc.conditions[i];
-        condHtml += '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px">';
-        condHtml += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
-        condHtml += '<input type="checkbox" id="oc-cond-en-' + i + '"' + (c.isEnabled ? ' checked' : '') + ' style="width:16px;height:16px">';
-        condHtml += '<label style="font-weight:600">' + c.conditionName + '</label>';
-        condHtml += '<input type="text" id="oc-cond-name-' + i + '" value="' + c.conditionName + '" style="width:140px;font-size:13px">';
-        condHtml += '<button class="btn btn-danger btn-sm" onclick="deleteCondition(' + i + ')">删除</button>';
-        condHtml += '</div>';
-        condHtml += '<div style="font-size:12px;color:var(--text-light);margin-bottom:6px">可选值（逗号分隔）：</div>';
-        condHtml += '<input type="text" id="oc-cond-opts-' + i + '" value="' + (c.optionList || []).join(',') + '" style="width:100%;font-size:13px">';
-        condHtml += '</div>';
+        var optsStr = (c.optionList || []).join(', ');
+        condHtml += '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden;background:#fff">';
+        // 卡片头部：标题 + 开关
+        condHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-bottom:1px solid var(--border)">';
+        condHtml += '<input type="text" id="oc-cond-name-' + i + '" value="' + c.conditionName + '" style="font-size:15px;font-weight:600;color:var(--text);background:transparent;border:none;outline:none;width:160px" placeholder="特性名称">';
+        condHtml += '<div style="display:flex;align-items:center;gap:6px">';
+        condHtml += '<label style="font-size:12px;color:var(--text-light);cursor:pointer" for="oc-cond-en-' + i + '">启用</label>';
+        condHtml += '<input type="checkbox" id="oc-cond-en-' + i + '"' + (c.isEnabled ? ' checked' : '') + ' style="width:16px;height:16px;cursor:pointer">';
+        condHtml += '<button class="btn btn-danger btn-sm" onclick="deleteCondition(' + i + ')" title="删除" style="padding:2px 8px;font-size:12px">×</button>';
+        condHtml += '</div></div>';
+        // 卡片中部：可选值编辑
+        condHtml += '<div style="padding:12px 14px">';
+        condHtml += '<div style="font-size:11px;color:var(--text-light);margin-bottom:6px;font-weight:500">可选值（逗号分隔）</div>';
+        condHtml += '<input type="text" id="oc-cond-opts-' + i + '" value="' + optsStr + '" style="width:100%;font-size:13px;border:1px dashed var(--border);border-radius:4px;padding:6px 8px;background:#fafafa" placeholder="如：A级, B级, C级">';
+        // 可选值标签预览
+        if (c.optionList && c.optionList.length > 0) {
+            condHtml += '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">';
+            for (var j = 0; j < c.optionList.length; j++) {
+                condHtml += '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe">' + c.optionList[j] + '</span>';
+            }
+            condHtml += '</div>';
+        }
+        condHtml += '</div></div>';
     }
-    document.getElementById('oc-conditions-list').innerHTML = condHtml || '<p style="color:#999">暂无特性条件，请添加</p>';
+    document.getElementById('oc-conditions-list').innerHTML = condHtml || '<p style="color:#999;grid-column:1/-1">暂无特性条件，请添加</p>';
 
     // 物料特性关联列表
     var matList = getMaterialFeatureBaseList();
