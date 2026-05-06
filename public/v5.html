@@ -7975,24 +7975,26 @@ function renderOptimalCostPage() {
     for (var i = 0; i < oc.conditions.length; i++) {
         var c = oc.conditions[i];
         var optsStr = (c.optionList || []).join(', ');
-        condHtml += '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden;background:#fff">';
-        // 卡片头部：标题 + 开关
-        condHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-bottom:1px solid var(--border)">';
-        condHtml += '<input type="text" id="oc-cond-name-' + i + '" value="' + c.conditionName + '" style="font-size:15px;font-weight:600;color:var(--text);background:transparent;border:none;outline:none;width:160px" placeholder="特性名称">';
+        condHtml += '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.05)">';
+        // 卡片头部：标题 + 开关（单行紧凑模式）
+        condHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-bottom:1px solid var(--border)">';
+        condHtml += '<div style="display:flex;align-items:center;gap:8px;flex:1">';
+        condHtml += '<input type="checkbox" id="oc-cond-en-' + i + '"' + (c.isEnabled ? ' checked' : '') + ' style="width:14px;height:14px;cursor:pointer;margin:0">';
+        condHtml += '<input type="text" id="oc-cond-name-' + i + '" value="' + c.conditionName + '" style="font-size:14px;font-weight:600;color:var(--text);background:transparent;border:none;outline:none;flex:1;min-width:80px" placeholder="特性名称">';
+        condHtml += '</div>';
+        condHtml += '<button class="btn btn-danger btn-sm" onclick="deleteCondition(' + i + ')" title="删除" style="padding:2px 8px;font-size:12px;margin-left:8px">×</button>';
+        condHtml += '</div>';
+        // 卡片中部：可选值编辑（紧凑版）
+        condHtml += '<div style="padding:10px 12px">';
         condHtml += '<div style="display:flex;align-items:center;gap:6px">';
-        condHtml += '<label style="font-size:12px;color:var(--text-light);cursor:pointer" for="oc-cond-en-' + i + '">启用</label>';
-        condHtml += '<input type="checkbox" id="oc-cond-en-' + i + '"' + (c.isEnabled ? ' checked' : '') + ' style="width:16px;height:16px;cursor:pointer">';
-        condHtml += '<button class="btn btn-danger btn-sm" onclick="deleteCondition(' + i + ')" title="删除" style="padding:2px 8px;font-size:12px">×</button>';
-        condHtml += '</div></div>';
-        // 卡片中部：可选值编辑
-        condHtml += '<div style="padding:12px 14px">';
-        condHtml += '<div style="font-size:11px;color:var(--text-light);margin-bottom:6px;font-weight:500">可选值（逗号分隔）</div>';
-        condHtml += '<input type="text" id="oc-cond-opts-' + i + '" value="' + optsStr + '" style="width:100%;font-size:13px;border:1px dashed var(--border);border-radius:4px;padding:6px 8px;background:#fafafa" placeholder="如：A级, B级, C级">';
+        condHtml += '<span style="font-size:11px;color:var(--text-light);white-space:nowrap">可选值：</span>';
+        condHtml += '<input type="text" id="oc-cond-opts-' + i + '" value="' + optsStr + '" style="flex:1;font-size:12px;border:1px dashed var(--border);border-radius:4px;padding:5px 8px;background:#fafafa" placeholder="A级, B级, C级">';
+        condHtml += '</div>';
         // 可选值标签预览
         if (c.optionList && c.optionList.length > 0) {
-            condHtml += '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">';
+            condHtml += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px">';
             for (var j = 0; j < c.optionList.length; j++) {
-                condHtml += '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe">' + c.optionList[j] + '</span>';
+                condHtml += '<span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe">' + c.optionList[j] + '</span>';
             }
             condHtml += '</div>';
         }
