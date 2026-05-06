@@ -2555,9 +2555,16 @@
 
     <!-- 物料特性关联 -->
     <div class="card">
-        <div class="card-header">
-            <div class="card-title">🔗 物料特性关联</div>
-            <div style="font-size:12px;color:var(--text-light)">为现有物料库绑定特性标签，作为最优成本计算的候选物料池</div>
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+                <div class="card-title">🔗 物料特性关联</div>
+                <div style="font-size:12px;color:var(--text-light)">为现有物料库绑定特性标签，作为最优成本计算的候选物料池</div>
+            </div>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-success btn-sm" onclick="addOptimalCostMaterial()">+ 新增物料</button>
+                <button class="btn btn-secondary btn-sm" onclick="importMaterialsFromExcel()">📥 Excel导入</button>
+                <button class="btn btn-secondary btn-sm" onclick="downloadMaterialTemplate()">📄 下载模板</button>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-container">
@@ -8017,7 +8024,7 @@ function renderOptimalCostPage() {
         matHtml += '<td>' + m.materialName + '</td>';
         matHtml += '<td>¥' + m.basePrice.toFixed(2) + '</td>';
         matHtml += '<td><span style="font-size:11px;color:var(--text-light)">' + (tags.join('; ') || '未设置') + '</span></td>';
-        matHtml += '<td class="table-actions"><button class="btn btn-primary btn-sm" onclick="openMaterialFeatureEdit(\'' + m.materialId + '\')">编辑特性</button></td>';
+        matHtml += '<td class="table-actions"><button class="btn btn-primary btn-sm" onclick="openMaterialFeatureEdit(\'' + m.materialId + '\')">编辑特性</button> <button class="btn btn-danger btn-sm" onclick="deleteOptimalCostMaterial(\'' + m.materialId + '\')">删除</button></td>';
         matHtml += '</tr>';
     }
     document.getElementById('oc-material-list').innerHTML = matHtml || '<tr><td colspan="5" style="text-align:center;color:#999">暂无物料数据，请先在BOM层级管理或报价测算中维护物料</td></tr>';
@@ -8506,6 +8513,185 @@ function exportOptimalResult() {
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '最优成本测算记录');
     XLSX.writeFile(wb, '最优成本测算记录_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+}
+
+// --- 物料管理（新增/导入/删除）---
+function addOptimalCostMaterial() {
+    var oc = getOptimalCostData();
+    var html = '<div class="form-grid">';
+    html += '<div class="form-group"><label>物料编码 <span style="color:#dc2626">*</span></label><input type="text" id="ocm-code" placeholder="如：MAT-001" style="width:100%"></div>';
+    html += '<div class="form-group"><label>物料名称 <span style="color:#dc2626">*</span></label><input type="text" id="ocm-name" placeholder="如：ABS塑料" style="width:100%"></div>';
+    html += '<div class="form-group"><label>基础单价（元）<span style="color:#dc2626">*</span></label><input type="number" id="ocm-price" placeholder="0.00" step="0.01" style="width:100%"></div>';
+    html += '<div class="form-group"><label>规格</label><input type="text" id="ocm-spec" placeholder="如：3mm 黑色" style="width:100%"></div>';
+    html += '<div class="form-group"><label>单位</label><input type="text" id="ocm-unit" placeholder="如：kg / 件 / m" value="件" style="width:100%"></div>';
+    html += '</div>';
+    html += '<div style="margin-top:12px;font-size:12px;color:var(--text-light)">新增物料将直接进入最优成本测算候选池，不会同步到BOM层级管理的物料库。</div>';
+    openModal('新增候选物料', html, function() {
+        var code = document.getElementById('ocm-code').value.trim();
+        var name = document.getElementById('ocm-name').value.trim();
+        var price = parseFloat(document.getElementById('ocm-price').value);
+        var spec = document.getElementById('ocm-spec').value.trim();
+        var unit = document.getElementById('ocm-unit').value.trim() || '件';
+        if (!code) { alert('请输入物料编码'); return false; }
+        if (!name) { alert('请输入物料名称'); return false; }
+        if (isNaN(price) || price < 0) { alert('请输入有效的基础单价'); return false; }
+        // 检查重复编码
+        var list = getMaterialFeatureBaseList();
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].materialId === code) { alert('物料编码「' + code + '」已存在'); return false; }
+        }
+        // 保存到 optimalCost.materialFeatures
+        if (!oc.materialFeatures) oc.materialFeatures = [];
+        oc.materialFeatures.push({
+            materialId: code,
+            materialName: name,
+            basePrice: price,
+            spec: spec,
+            unit: unit,
+            featureTags: {},
+            source: 'optimal-cost-manual'
+        });
+        syncCurrentProductToArray();
+        saveToStorage();
+        renderOptimalCostPage();
+        alert('物料「' + name + '」已添加');
+        return true;
+    });
+}
+
+function deleteOptimalCostMaterial(materialId) {
+    if (!confirm('确认删除该物料？删除后不可恢复。')) return;
+    var oc = getOptimalCostData();
+    // 仅从 materialFeatures 中删除（手动添加的）
+    var idx = -1;
+    for (var i = 0; i < (oc.materialFeatures || []).length; i++) {
+        if (oc.materialFeatures[i].materialId === materialId) { idx = i; break; }
+    }
+    if (idx >= 0) {
+        oc.materialFeatures.splice(idx, 1);
+        syncCurrentProductToArray();
+        saveToStorage();
+        renderOptimalCostPage();
+        alert('已删除');
+    } else {
+        alert('该物料来自BOM层级管理，请前往「BOM层级管理」删除。');
+    }
+}
+
+function downloadMaterialTemplate() {
+    var headers = ['物料编码', '物料名称', '基础单价', '规格', '单位', '材质等级', '工艺精度', '供应商等级', '环保标准', '交货周期'];
+    var sample = [
+        'MAT-001', 'ABS塑料', '12.50', '3mm 黑色', 'kg', 'A级', '高精度', '战略供应商', 'ROHS', '7天内'
+    ];
+    var ws = XLSX.utils.aoa_to_sheet([headers, sample]);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '物料导入模板');
+    // 设置列宽
+    ws['!cols'] = [
+        {wch:14}, {wch:16}, {wch:12}, {wch:14}, {wch:8},
+        {wch:12}, {wch:12}, {wch:14}, {wch:12}, {wch:10}
+    ];
+    XLSX.writeFile(wb, '最优成本_物料导入模板.xlsx');
+}
+
+function importMaterialsFromExcel() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                var data = new Uint8Array(evt.target.result);
+                var workbook = XLSX.read(data, { type: 'array' });
+                var firstSheet = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheet];
+                var json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                if (json.length < 2) { alert('Excel文件为空或格式错误'); return; }
+
+                var headers = json[0];
+                // 映射列索引（支持中文表头）
+                var colMap = {};
+                var required = ['物料编码', '物料名称', '基础单价'];
+                for (var i = 0; i < headers.length; i++) {
+                    var h = String(headers[i] || '').trim();
+                    if (h === '物料编码' || h === '编码' || h === 'code') colMap.code = i;
+                    if (h === '物料名称' || h === '名称' || h === 'name') colMap.name = i;
+                    if (h === '基础单价' || h === '单价' || h === 'price') colMap.price = i;
+                    if (h === '规格' || h === 'spec') colMap.spec = i;
+                    if (h === '单位' || h === 'unit') colMap.unit = i;
+                    // 特性列
+                    if (h === '材质等级') colMap['材质等级'] = i;
+                    if (h === '工艺精度') colMap['工艺精度'] = i;
+                    if (h === '供应商等级') colMap['供应商等级'] = i;
+                    if (h === '环保标准') colMap['环保标准'] = i;
+                    if (h === '交货周期') colMap['交货周期'] = i;
+                }
+                if (colMap.code == null || colMap.name == null || colMap.price == null) {
+                    alert('Excel表头缺少必填列：物料编码、物料名称、基础单价\n当前表头：' + headers.join(', '));
+                    return;
+                }
+
+                var oc = getOptimalCostData();
+                if (!oc.materialFeatures) oc.materialFeatures = [];
+                var added = 0, skipped = 0, updated = 0;
+                var existingIds = [];
+                var list = getMaterialFeatureBaseList();
+                for (var k = 0; k < list.length; k++) existingIds.push(list[k].materialId);
+
+                for (var r = 1; r < json.length; r++) {
+                    var row = json[r];
+                    if (!row || row.length === 0) continue;
+                    var code = String(row[colMap.code] || '').trim();
+                    var name = String(row[colMap.name] || '').trim();
+                    var price = parseFloat(row[colMap.price]);
+                    if (!code || !name || isNaN(price)) { skipped++; continue; }
+
+                    var spec = colMap.spec != null ? String(row[colMap.spec] || '').trim() : '';
+                    var unit = colMap.unit != null ? String(row[colMap.unit] || '').trim() : '件';
+                    var featureTags = {};
+                    var tagNames = ['材质等级', '工艺精度', '供应商等级', '环保标准', '交货周期'];
+                    for (var t = 0; t < tagNames.length; t++) {
+                        var colIdx = colMap[tagNames[t]];
+                        if (colIdx != null && row[colIdx]) {
+                            featureTags[tagNames[t]] = String(row[colIdx]).trim();
+                        }
+                    }
+
+                    var foundIdx = -1;
+                    for (var m = 0; m < oc.materialFeatures.length; m++) {
+                        if (oc.materialFeatures[m].materialId === code) { foundIdx = m; break; }
+                    }
+                    var item = {
+                        materialId: code,
+                        materialName: name,
+                        basePrice: price,
+                        spec: spec,
+                        unit: unit || '件',
+                        featureTags: featureTags,
+                        source: 'optimal-cost-import'
+                    };
+                    if (foundIdx >= 0) {
+                        oc.materialFeatures[foundIdx] = item;
+                        updated++;
+                    } else {
+                        oc.materialFeatures.push(item);
+                        added++;
+                    }
+                }
+                syncCurrentProductToArray();
+                saveToStorage();
+                renderOptimalCostPage();
+                alert('导入完成。新增 ' + added + ' 条，更新 ' + updated + ' 条，跳过 ' + skipped + ' 条（数据不完整或编码重复）。');
+            } catch (err) {
+                alert('导入失败：' + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+    input.click();
 }
 
 function renderOptimalCalcPanel() {
