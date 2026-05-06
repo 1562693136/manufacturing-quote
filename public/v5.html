@@ -2542,10 +2542,13 @@
         </div>
         <div class="card-body">
             <div id="oc-conditions-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
-            <div style="margin-top:16px;display:flex;gap:8px;align-items:center">
+            <div style="margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                 <select id="oc-template-select" style="width:180px;font-size:13px"><option value="">-- 选择预设模板 --</option></select>
-                <button class="btn btn-secondary btn-sm" onclick="loadTemplate()">加载模板</button>
+                <button class="btn btn-secondary btn-sm" onclick="loadTemplate()">加载配置</button>
                 <button class="btn btn-secondary btn-sm" onclick="saveAsTemplate()">保存为模板</button>
+                <button class="btn btn-success btn-sm" onclick="applyTemplateAndCalc()">一键测算</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportTemplates()">导出模板</button>
+                <button class="btn btn-secondary btn-sm" onclick="importTemplates()">导入模板</button>
             </div>
         </div>
     </div>
@@ -8146,16 +8149,30 @@ function saveAsTemplate() {
     var oc = getOptimalCostData();
     var name = prompt('请输入模板名称：');
     if (!name) return;
+    // 收集当前测算条件勾选状态作为模板默认值
+    var calcDefaults = [];
+    for (var i = 0; i < oc.conditions.length; i++) {
+        var cb = document.getElementById('oc-calc-cond-' + i);
+        var val = document.getElementById('oc-calc-cond-val-' + i);
+        if (cb && val) {
+            calcDefaults.push({
+                conditionName: oc.conditions[i].conditionName,
+                checked: cb.checked,
+                value: val.value
+            });
+        }
+    }
     var tmpl = {
         name: name,
         conditions: JSON.parse(JSON.stringify(oc.conditions)),
+        calcDefaults: calcDefaults,
         createdAt: new Date().toISOString()
     };
     if (!oc.templates) oc.templates = [];
     oc.templates.push(tmpl);
     syncCurrentProductToArray();
     saveToStorage();
-    alert('模板已保存');
+    alert('模板已保存（含测算条件默认值）');
     renderOptimalCostPage();
 }
 
@@ -8170,6 +8187,113 @@ function loadTemplate() {
     syncCurrentProductToArray();
     saveToStorage();
     renderOptimalCostPage();
+    // 延迟应用测算默认值
+    setTimeout(function() {
+        if (tmpl.calcDefaults) {
+            for (var i = 0; i < tmpl.calcDefaults.length; i++) {
+                var d = tmpl.calcDefaults[i];
+                // 找到对应条件索引
+                for (var j = 0; j < oc.conditions.length; j++) {
+                    if (oc.conditions[j].conditionName === d.conditionName) {
+                        var cb = document.getElementById('oc-calc-cond-' + j);
+                        var val = document.getElementById('oc-calc-cond-val-' + j);
+                        if (cb) cb.checked = d.checked;
+                        if (val) val.value = d.value || '';
+                        break;
+                    }
+                }
+            }
+        }
+    }, 50);
+    alert('模板已加载。' + (tmpl.calcDefaults ? '已同步测算条件勾选状态。' : ''));
+}
+
+function applyTemplateAndCalc() {
+    var idx = document.getElementById('oc-template-select').value;
+    if (idx === '') { alert('请先选择一个模板'); return; }
+    var oc = getOptimalCostData();
+    var tmpl = oc.templates[parseInt(idx)];
+    if (!tmpl) return;
+    if (!confirm('应用模板「' + tmpl.name + '」并立即开始最优成本测算？')) return;
+    // 先加载配置
+    oc.conditions = JSON.parse(JSON.stringify(tmpl.conditions));
+    syncCurrentProductToArray();
+    saveToStorage();
+    renderOptimalCostPage();
+    // 立即应用测算默认值并执行
+    setTimeout(function() {
+        if (tmpl.calcDefaults) {
+            for (var i = 0; i < tmpl.calcDefaults.length; i++) {
+                var d = tmpl.calcDefaults[i];
+                for (var j = 0; j < oc.conditions.length; j++) {
+                    if (oc.conditions[j].conditionName === d.conditionName) {
+                        var cb = document.getElementById('oc-calc-cond-' + j);
+                        var val = document.getElementById('oc-calc-cond-val-' + j);
+                        if (cb) cb.checked = d.checked;
+                        if (val) val.value = d.value || '';
+                        break;
+                    }
+                }
+            }
+        }
+        // 自动执行测算
+        runOptimalCostCalc();
+    }, 100);
+}
+
+function exportTemplates() {
+    var oc = getOptimalCostData();
+    if (!oc.templates || oc.templates.length === 0) { alert('暂无模板可导出'); return; }
+    var data = JSON.stringify(oc.templates, null, 2);
+    var blob = new Blob([data], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '最优成本测算模板_' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importTemplates() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                var imported = JSON.parse(evt.target.result);
+                if (!Array.isArray(imported)) { alert('导入文件格式错误：应为模板数组'); return; }
+                var oc = getOptimalCostData();
+                if (!oc.templates) oc.templates = [];
+                var added = 0;
+                for (var i = 0; i < imported.length; i++) {
+                    var t = imported[i];
+                    if (t && t.name && Array.isArray(t.conditions)) {
+                        // 去重：同名模板覆盖
+                        var found = false;
+                        for (var j = 0; j < oc.templates.length; j++) {
+                            if (oc.templates[j].name === t.name) {
+                                oc.templates[j] = t;
+                                found = true; break;
+                            }
+                        }
+                        if (!found) { oc.templates.push(t); added++; }
+                    }
+                }
+                syncCurrentProductToArray();
+                saveToStorage();
+                renderOptimalCostPage();
+                alert('导入完成。新增 ' + added + ' 个模板，重复名称已覆盖。');
+            } catch (err) {
+                alert('导入失败：' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
 }
 
 // --- 计算层 ---
