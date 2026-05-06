@@ -35,7 +35,7 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             font-family: 'Noto Sans SC', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg);
@@ -674,6 +674,9 @@
 <div class="nav-item" data-page="sop" onclick="showPage('sop')">
             <span class="icon">📖</span> SOP与权限
         </div>
+        <div class="nav-item" data-page="optimal-cost" onclick="showPage('optimal-cost')">
+            <span class="icon">🧮</span> 最优成本测算
+        </div>
     </div>
 </nav>
 
@@ -682,7 +685,7 @@
 
 <!-- PAGE 1: 产品报价测算 -->
 <section id="page-quotation" class="page-section active">
-    
+
     <!-- Current Quote Bar -->
     <div id="current-quote-bar" style="background:linear-gradient(135deg,var(--accent) 0%,var(--primary-light) 100%);color:white;padding:10px 16px;border-radius:var(--radius);margin-bottom:16px;font-size:14px;display:flex;align-items:center;gap:8px">
         当前报价单: 加载中...
@@ -823,7 +826,7 @@
 
     <!-- Cost Cards Grid -->
     <div class="cost-cards">
-        
+
         <!-- Card 1: Direct Material -->
         <div class="cost-card">
             <div class="cost-card-header">🔧 直接材料成本</div>
@@ -839,7 +842,7 @@
                         半成品总成本: <span id="semi-total">¥0.00</span>
                     </div>
                 </div>
-                
+
                 <!-- Packaging -->
                 <div class="sub-module">
                     <div class="sub-module-title">📦 包装材料</div>
@@ -851,7 +854,7 @@
                         包装材料总成本: <span id="pack-total">¥0.00</span>
                     </div>
                 </div>
-                
+
                 <div style="text-align:right;margin-top:12px;padding-top:12px;border-top:2px solid var(--border);font-size:16px;font-weight:700;color:var(--primary)">
                     直接材料总成本: <span id="material-total">¥0.00</span>
                 </div>
@@ -1073,7 +1076,7 @@
             </div>
             <button class="btn btn-primary btn-sm" onclick="optimizeQuote()">🎯 智能优化报价</button>
         </div>
-        
+
         <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
             <button id="calc-log-toggle" class="btn btn-secondary btn-sm" onclick="toggleCalcLog()">📐 展开计算过程</button>
             <div id="calc-log-panel" style="display:none;margin-top:16px">
@@ -1908,7 +1911,7 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>编码</th><th>名称</th><th>规格</th><th>单价</th><th>损耗率%</th><th>操作</th>
+                                    <th>编码</th><th>名称</th><th>规格</th><th>单价</th><th>损耗率%</th><th>所属产品</th><th>操作</th>
                                 </tr>
                             </thead>
                             <tbody id="cost-material-list"></tbody>
@@ -1929,7 +1932,7 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>编码</th><th>名称</th><th>规格</th><th>单价(元/时)</th><th>标准工时(分)</th><th>操作</th>
+                                    <th>编码</th><th>名称</th><th>规格</th><th>单价(元/时)</th><th>标准工时(分)</th><th>所属产品</th><th>操作</th>
                                 </tr>
                             </thead>
                             <tbody id="cost-labor-list"></tbody>
@@ -1950,7 +1953,7 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>编码</th><th>名称</th><th>规格</th><th>单价</th><th>损耗率%</th><th>操作</th>
+                                    <th>编码</th><th>名称</th><th>规格</th><th>单价</th><th>损耗率%</th><th>所属产品</th><th>操作</th>
                                 </tr>
                             </thead>
                             <tbody id="cost-mfg-list"></tbody>
@@ -1971,7 +1974,7 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>编码</th><th>名称</th><th>规格</th><th>费率%</th><th>固定额</th><th>操作</th>
+                                    <th>编码</th><th>名称</th><th>规格</th><th>费率%</th><th>固定额</th><th>所属产品</th><th>操作</th>
                                 </tr>
                             </thead>
                             <tbody id="cost-period-list"></tbody>
@@ -1992,7 +1995,7 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>编码</th><th>名称</th><th>规格</th><th>单价</th><th>损耗率%</th><th>操作</th>
+                                    <th>编码</th><th>名称</th><th>规格</th><th>单价</th><th>损耗率%</th><th>所属产品</th><th>操作</th>
                                 </tr>
                             </thead>
                             <tbody id="cost-other-list"></tbody>
@@ -2156,8 +2159,19 @@
     <div class="card">
         <div class="card-header">
             <div class="card-title">📚 报价历史查询</div>
-            <div style="display:flex;gap:8px">
-                <input type="text" id="history-search" placeholder="产品编码/名称" style="width:200px" onkeyup="searchHistory()">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <select id="history-product-filter" onchange="searchHistory()" style="width:160px;font-size:13px">
+                    <option value="">全部产品</option>
+                </select>
+                <select id="history-progress-filter" onchange="searchHistory()" style="width:140px;font-size:13px">
+                    <option value="">全部状态</option>
+                    <option value="draft">草稿</option>
+                    <option value="calculating">测算中</option>
+                    <option value="cost_confirmed">成本确认</option>
+                    <option value="price_confirmed">价格确认</option>
+                    <option value="archived">已归档</option>
+                </select>
+                <input type="text" id="history-search" placeholder="产品编码/名称/单号" style="width:200px" onkeyup="searchHistory()">
                 <button class="btn btn-primary btn-sm" onclick="searchHistory()">🔍 搜索</button>
             </div>
         </div>
@@ -2167,7 +2181,7 @@
                     <thead>
                         <tr>
                             <th>报价单号</th><th>产品编码</th><th>产品名称</th><th>客户</th><th>基准产量</th>
-                            <th>单位成本</th><th>报价</th><th>毛利率</th><th>创建时间</th><th>操作</th>
+                            <th>单位成本</th><th>报价</th><th>毛利率</th><th>报价进度</th><th>创建时间</th><th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="history-list"></tbody>
@@ -2515,6 +2529,94 @@
         <div id="filter-modal-body" style="padding:20px"></div>
     </div>
 </div>
+<!-- PAGE: 最优成本测算 -->
+<section id="page-optimal-cost" class="page-section">
+    <!-- 特性配置 -->
+    <div class="card">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <div class="card-title">⚙️ 自定义生产特性配置</div>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-success btn-sm" onclick="addCondition()">+ 新增特性</button>
+                <button class="btn btn-primary btn-sm" onclick="saveConditions()">💾 保存配置</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="oc-conditions-list"></div>
+            <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+                <select id="oc-template-select" style="width:180px;font-size:13px"><option value="">-- 选择预设模板 --</option></select>
+                <button class="btn btn-secondary btn-sm" onclick="loadTemplate()">加载模板</button>
+                <button class="btn btn-secondary btn-sm" onclick="saveAsTemplate()">保存为模板</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 物料特性关联 -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🔗 物料特性关联</div>
+            <div style="font-size:12px;color:var(--text-light)">为现有物料库绑定特性标签，作为最优成本计算的候选物料池</div>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>物料编码</th><th>物料名称</th><th>基础单价</th><th>已绑定特性</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="oc-material-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最优成本测算执行 -->
+    <div class="card">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <div class="card-title">🧮 最优成本测算执行</div>
+            <div style="font-size:13px;color:var(--text-light)">当前产品：<span id="oc-current-product" style="font-weight:600">-</span></div>
+        </div>
+        <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                <div>
+                    <div style="font-weight:600;font-size:14px;margin-bottom:10px">选择测算条件（至少选1项）：</div>
+                    <div id="oc-calc-conditions"></div>
+                    <button class="btn btn-primary btn-sm" onclick="runOptimalCostCalc()" style="margin-top:12px">🚀 开始最优成本测算</button>
+                    <div style="margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;padding:8px;border-radius:4px">
+                        💡 算法将遍历所有满足条件的物料组合，自动剪枝，输出总成本最低的方案。响应时间 &lt; 2s。
+                    </div>
+                </div>
+                <div>
+                    <div style="font-weight:600;font-size:14px;margin-bottom:10px">测算说明：</div>
+                    <div style="font-size:13px;color:var(--text-light);line-height:1.8">
+                        <p>1. 系统从当前产品的BOM结构提取物料清单。</p>
+                        <p>2. 根据勾选的特性条件，为每类物料筛选候选替代物料。</p>
+                        <p>3. 生成所有符合条件的组合，剪枝优化后取总成本最低方案。</p>
+                        <p>4. 结果包含：最优BOM方案、成本明细、比原始报价的优化率。</p>
+                        <p>5. 预留阶梯价接口 getTieredPrice()，后续对接采购系统即可自动计算最优生产批量。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 测算结果历史 -->
+    <div class="card">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <div class="card-title">📊 测算结果历史</div>
+            <button class="btn btn-secondary btn-sm" onclick="exportOptimalResult()">📤 导出Excel</button>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>产品编码</th><th>最优总成本</th><th>原始总成本</th><th>优化率</th><th>创建时间</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="oc-history-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
 </main>
 
 <!-- Modal: Edit Item -->
@@ -3202,7 +3304,7 @@ function showFieldHistory(fieldName) {
         alert(`字段 "${fieldName}" 暂无修改记录`);
         return;
     }
-    const html = history.map(h => 
+    const html = history.map(h =>
         `• ${new Date(h.time).toLocaleString('zh-CN')}: ${h.oldValue} → ${h.newValue} (${h.source})`
     ).join('\n');
     alert(`字段 "${fieldName}" 最近修改记录:\n\n${html}`);
@@ -3217,7 +3319,7 @@ function copyQuoteTable() {
     const unitProfit = document.getElementById('result-unit-profit').textContent;
     const margin = document.getElementById('result-margin').textContent;
     const totalProfit = document.getElementById('result-total-profit').textContent;
-    
+
     const md = `## 产品报价单
 
 | 项目 | 数值 |
@@ -3234,7 +3336,7 @@ function copyQuoteTable() {
 | 毛利率 | ${margin} |
 | 总利润 | ${totalProfit} |
 `;
-    
+
     navigator.clipboard.writeText(md).then(() => {
         alert('报价单已复制到剪贴板（Markdown格式）');
     }).catch(() => {
@@ -3275,7 +3377,7 @@ function copyAsImage() {
 function importExcel(input, type) {
     const file = input.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
@@ -3283,18 +3385,18 @@ function importExcel(input, type) {
             const workbook = XLSX.read(data, { type: 'array' });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            
+
             if (rows.length < 2) {
                 alert('Excel文件为空或格式错误');
                 return;
             }
-            
+
             const headers = rows[0];
             const records = rows.slice(1).filter(r => r.some(c => c !== undefined && c !== ''));
-            
+
             let errors = [];
             let imported = 0;
-            
+
             if (type === 'bom') {
                 // Validate BOM: code unique, consumption>0, price>0, lossRate 0-100
                 const codes = new Set();
@@ -3303,16 +3405,16 @@ function importExcel(input, type) {
                     const consumption = parseFloat(row[4]);
                     const price = parseFloat(row[5]);
                     const lossRate = parseFloat(row[6]);
-                    
+
                     if (!code) errors.push(`第${idx+2}行: 物料编码不能为空`);
                     else if (codes.has(code)) errors.push(`第${idx+2}行: 物料编码 "${code}" 重复`);
                     else codes.add(code);
-                    
+
                     if (isNaN(consumption) || consumption <= 0) errors.push(`第${idx+2}行: 单耗定额必须>0`);
                     if (isNaN(price) || price < 0) errors.push(`第${idx+2}行: 采购单价不能为负数`);
                     if (isNaN(lossRate) || lossRate < 0 || lossRate > 100) errors.push(`第${idx+2}行: 损耗率需在0-100之间`);
                 });
-                
+
                 if (errors.length === 0) {
                     appData.semiFinished = records.map((row, idx) => ({
                         id: idx + 1,
@@ -3335,17 +3437,17 @@ function importExcel(input, type) {
                     const code = String(row[0] || '').trim();
                     const time = parseFloat(row[2]);
                     const rate = parseFloat(row[3]);
-                    
+
                     if (!code) errors.push(`第${idx+2}行: 工序编码不能为空`);
                     else if (codes.has(code)) errors.push(`第${idx+2}行: 工序编码 "${code}" 重复`);
                     else codes.add(code);
-                    
+
                     if (isNaN(time) || time <= 0) errors.push(`第${idx+2}行: 单件标准工时必须>0`);
                     else if (time > 120) errors.push(`第${idx+2}行: 单件标准工时${time}分钟超过120分钟，请确认`);
-                    
+
                     if (isNaN(rate) || rate < 0) errors.push(`第${idx+2}行: 车间小时工价不能为负数`);
                 });
-                
+
                 if (errors.length === 0) {
                     appData.processes = records.map((row, idx) => ({
                         id: idx + 1,
@@ -3365,16 +3467,16 @@ function importExcel(input, type) {
                     const investment = parseFloat(row[3]);
                     const life = parseFloat(row[4]);
                     const capacity = parseFloat(row[5]);
-                    
+
                     if (!code) errors.push(`第${idx+2}行: 设备编码不能为空`);
                     else if (codes.has(code)) errors.push(`第${idx+2}行: 设备编码 "${code}" 重复`);
                     else codes.add(code);
-                    
+
                     if (isNaN(investment) || investment < 0) errors.push(`第${idx+2}行: 设备总投资额不能为负数`);
                     if (isNaN(life) || life <= 0) errors.push(`第${idx+2}行: 折旧年限必须>0`);
                     if (isNaN(capacity) || capacity <= 0) errors.push(`第${idx+2}行: 年设计产能必须>0`);
                 });
-                
+
                 if (errors.length === 0) {
                     appData.equipment = records.map((row, idx) => ({
                         id: idx + 1,
@@ -3394,11 +3496,11 @@ function importExcel(input, type) {
                 records.forEach((row, idx) => {
                     const moq = parseInt(row[2]);
                     const batchMultiple = parseInt(row[3]);
-                    
+
                     if (isNaN(moq) || moq <= 0 || !Number.isInteger(moq)) errors.push(`第${idx+2}行: MOQ必须是大于0的整数`);
                     if (isNaN(batchMultiple) || batchMultiple <= 0 || !Number.isInteger(batchMultiple)) errors.push(`第${idx+2}行: 批量倍数必须是大于0的整数`);
                 });
-                
+
                 if (errors.length === 0) {
                     imported = records.length;
                     // MOQ data is used in the MOQ page, stored separately
@@ -3419,7 +3521,7 @@ function importExcel(input, type) {
                         if (isNaN(val) || val < 0 || val > 100) errors.push(`第${idx+2}行: "${row[0]}" 比例/税率类参数需在0-100之间`);
                     }
                 });
-                
+
                 if (errors.length === 0) {
                     imported = records.length;
                     // Apply public params
@@ -3435,7 +3537,7 @@ function importExcel(input, type) {
                     });
                 }
             }
-            
+
             if (errors.length > 0) {
                 alert(`导入失败，发现 ${errors.length} 个错误:\n\n${errors.slice(0, 10).join('\n')}${errors.length > 10 ? '\n...等共' + errors.length + '个错误' : ''}`);
             } else {
@@ -3462,7 +3564,7 @@ function renderReport() {
     const quoteNoVat = parseFloat(document.getElementById('result-quote-no-vat').textContent.replace(/[¥,]/g,'')) || 0;
     const unitProfit = parseFloat(document.getElementById('result-unit-profit').textContent.replace(/[¥,]/g,'')) || 0;
     const totalProfit = unitProfit * volume;
-    
+
     const summaryBody = document.getElementById('report-summary-body');
     if (summaryBody) {
         summaryBody.innerHTML = `
@@ -3479,7 +3581,7 @@ function renderReport() {
             <tr style="background:${totalProfit>=0?'#f0fdf4':'#fef2f2'};font-weight:600"><td>总利润</td><td>¥${totalProfit.toLocaleString('zh-CN',{minimumFractionDigits:2})}</td><td>${totalProfit>=0?'盈利':'亏损'}</td></tr>
         `;
     }
-    
+
     // Ladder summary
     const ladderBody = document.getElementById('report-ladder-body');
     if (ladderBody) {
@@ -3487,7 +3589,7 @@ function renderReport() {
         ladderBody.innerHTML = testVolumes.map(v => {
             const volLadder = appData.volumeLadders.find(l => v >= l.minQty && v <= l.maxQty) || appData.volumeLadders[0];
             const quoteLadder = appData.quoteLadders.find(l => v >= l.minQty && v <= l.maxQty) || appData.quoteLadders[0];
-            
+
             const adjMaterial = materialTotal * (volLadder.materialDiscount/100);
             const adjLabor = laborTotal * (volLadder.laborEff/100);
             const adjMfg = mfgTotal * (volLadder.mfgFactor/100);
@@ -3495,7 +3597,7 @@ function renderReport() {
             const quote = adjCost * (quoteLadder.factor/100);
             const profit = quote - adjCost;
             const total = profit * v;
-            
+
             return `<tr>
                 <td>${v.toLocaleString()}</td>
                 <td>${volLadder.id}-${quoteLadder.level}</td>
@@ -3507,7 +3609,7 @@ function renderReport() {
             </tr>`;
         }).join('');
     }
-    
+
     // Equipment report
     const equipBody = document.getElementById('report-equipment-body');
     if (equipBody) {
@@ -3516,7 +3618,7 @@ function renderReport() {
             const annualDep = item.investment / item.life;
             const unitDep = annualDep / item.capacity;
             const unitCost = unitDep * item.factor;
-            
+
             return `<tr>
                 <td>${item.name} (${item.code})</td>
                 <td><span class="equipment-type ${item.type==='自有通用'?'eq-general':'eq-custom'}">${item.type}</span></td>
@@ -3527,7 +3629,7 @@ function renderReport() {
             </tr>`;
         }).join('');
     }
-    
+
     // Version history
     const versionBody = document.getElementById('report-version-body');
     if (versionBody) {
@@ -3550,17 +3652,17 @@ function generateFullPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
     let y = 20;
-    
+
     doc.setFontSize(20);
     doc.text('综合测算报告', 105, y, { align: 'center' });
     y += 15;
-    
+
     doc.setFontSize(10);
     doc.text(`产品: ${appData.product.code} | ${appData.product.name} | ${appData.product.spec}`, 20, y);
     y += 6;
     doc.text(`日期: ${document.getElementById('p-date').value} | 版本: ${document.getElementById('version-badge').textContent}`, 20, y);
     y += 12;
-    
+
     // Add more comprehensive report content
     const summary = document.getElementById('report-summary-body');
     if (summary) {
@@ -3568,7 +3670,7 @@ function generateFullPDF() {
         doc.text('一、报价总览', 20, y);
         y += 8;
         doc.setFontSize(9);
-        
+
         const rows = summary.querySelectorAll('tr');
         rows.forEach(row => {
             const cells = row.querySelectorAll('td');
@@ -3578,13 +3680,13 @@ function generateFullPDF() {
             }
         });
     }
-    
+
     y += 5;
     doc.setFontSize(12);
     doc.text('二、阶梯测算', 20, y);
     y += 8;
     doc.setFontSize(8);
-    
+
     const ladder = document.getElementById('report-ladder-body');
     if (ladder) {
         const rows = ladder.querySelectorAll('tr');
@@ -3597,7 +3699,7 @@ function generateFullPDF() {
             }
         });
     }
-    
+
     doc.save(`综合测算报告_${appData.product.code}_${Date.now()}.pdf`);
 }
 
@@ -3634,7 +3736,7 @@ function confirmFinalPrice() {
     if (finalPrice < unitCost) {
         if (!confirm('最终报价低于单位完全成本，确定要确认吗？')) return;
     }
-    
+
     // 保存到当前产品
     var code = appData.currentProductCode || currentProductCode;
     syncCurrentProductToArray();
@@ -3649,22 +3751,22 @@ function confirmFinalPrice() {
         appData.products[idx].priceStatus = 'confirmed';
         appData.products[idx].confirmedAt = new Date().toISOString();
     }
-    
+
     // 生成报价历史记录
     var now = new Date();
     var timeStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
     var dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    
+
     // 获取产品信息
     var prod = getProductByCode(code);
     var productName = prod && prod.product ? prod.product.name : '';
     var spec = prod && prod.product ? prod.product.spec : '';
     var customer = prod && prod.product ? prod.product.customer : '';
     var volume = prod && prod.product ? (parseFloat(prod.product.volume) || 5000) : 5000;
-    
+
     // 生成报价编号
     var quoteNo = 'Q' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + String(Math.floor(Math.random() * 900) + 100);
-    
+
     // 获取最新ID
     var newId = 1;
     if (appData.quotations) {
@@ -3672,10 +3774,10 @@ function confirmFinalPrice() {
             if (appData.quotations[j].id >= newId) newId = appData.quotations[j].id + 1;
         }
     }
-    
+
     // 计算毛利率
     var margin = finalPrice > 0 ? ((finalPrice - unitCost) / finalPrice * 100) : 0;
-    
+
     // 创建报价记录
     var quoteRecord = {
         id: newId,
@@ -3697,19 +3799,19 @@ function confirmFinalPrice() {
         operator: '系统',
         source: '价格确认'
     };
-    
+
     // 保存到全局报价列表
     if (!appData.quotations) appData.quotations = [];
     appData.quotations.push(quoteRecord);
-    
+
     // 同步到产品数据
     if (idx >= 0) {
         if (!appData.products[idx].quotations) appData.products[idx].quotations = [];
         appData.products[idx].quotations.push(quoteRecord);
-        
+
         // 同时更新quotationHistory
         if (!appData.products[idx].quotationHistory) appData.products[idx].quotationHistory = [];
-        appData.products[idx].quotationHistory.push({
+        var histRecord = {
             id: newId,
             quoteNo: quoteNo,
             productCode: code,
@@ -3720,18 +3822,40 @@ function confirmFinalPrice() {
             quote: finalPrice,
             margin: margin.toFixed(2),
             createTime: timeStr,
-            operator: '系统'
-        });
+            operator: '系统',
+            progress: 'price_confirmed',
+            dataSnapshot: buildCostSnapshotFromProduct()
+        };
+        appData.products[idx].quotationHistory.push(histRecord);
     }
-    
+
+    // 同时保存到全局报价历史库（保证报价历史查询可检索）
+    if (!appData.quotationHistory) appData.quotationHistory = [];
+    var globalHistRecord = {
+        id: newId,
+        quoteNo: quoteNo,
+        productCode: code,
+        productName: productName,
+        customer: customer,
+        volume: volume,
+        unitCost: unitCost,
+        quote: finalPrice,
+        margin: margin.toFixed(2),
+        createTime: timeStr,
+        operator: '系统',
+        progress: 'price_confirmed',
+        dataSnapshot: buildCostSnapshotFromProduct()
+    };
+    appData.quotationHistory.push(globalHistRecord);
+
     saveToStorage();
     document.getElementById('price-confirm-status').textContent = '已确认';
     document.getElementById('price-confirm-status').style.cssText = 'font-size:12px;padding:2px 8px;border-radius:4px;background:#dcfce7;color:#166534';
-    
+
     // 刷新相关列表
     if (typeof renderQuoteList === 'function') renderQuoteList();
     if (typeof renderHistoryList === 'function') renderHistoryList();
-    
+
     alert('✅ 价格已确认\n产品：' + code + '\n报价编号：' + quoteNo + '\n单位完全成本：¥' + unitCost.toFixed(2) + '\n最终报价：¥' + finalPrice.toFixed(2) + '\n毛利率：' + margin.toFixed(1) + '%\n\n已保存到报价历史库，可在「报价历史查询」中查看。');
 }
 
@@ -3820,14 +3944,14 @@ function showPage(pageId) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('page-' + pageId).classList.add('active');
     document.querySelector('[data-page="' + pageId + '"]').classList.add('active');
-    
+
     if (pageId === 'ladder') renderLadderCharts();
     if (pageId === 'scenario') renderScenarioChart();
     if (pageId === 'report') renderReport();
     if (pageId === 'parameters') renderCostMaintain();
     if (pageId === 'cost-maintain') renderCostElementPage();
     if (pageId === 'quotation') updateQuotationFlowHint();
-    
+
     // 处理成本要素维护页面来源提示
     if (pageId !== 'cost-maintain') {
         window._costFromQuotation = false;
@@ -3979,7 +4103,7 @@ function renderEquipment() {
         const annualDepreciation = item.investment / item.life;
         const unitDepreciation = annualDepreciation / item.capacity;
         const unitCost = unitDepreciation * item.factor;
-        
+
         return `<tr>
             <td>${item.code}</td>
             <td>${item.name}</td>
@@ -3996,7 +4120,7 @@ function renderEquipment() {
             </td>
         </tr>`;
     }).join('');
-    
+
     checkEquipmentCapacity();
 }
 
@@ -4123,40 +4247,40 @@ function renderParamProcess() {
 // ==================== CALCULATIONS ====================
 function calculateAll() {
     const volume = parseFloat(document.getElementById('p-volume').value) || 0;
-    
+
     // Semi-finished materials
     let semiTotal = 0;
     appData.semiFinished.forEach(item => {
         const cost = item.consumption * item.price * (1 + item.lossRate/100);
         semiTotal += cost;
     });
-    
+
     // Packaging
     let packTotal = 0;
     appData.packaging.forEach(item => {
         const cost = item.quantity * item.price * (1 + item.lossRate/100);
         packTotal += cost;
     });
-    
+
     const materialTotal = semiTotal + packTotal;
-    
+
     // Labor
     let laborTotal = 0;
     appData.processes.forEach(item => {
         laborTotal += (item.time / 60) * item.rate;
     });
-    
+
     // Manufacturing
     const energy = parseFloat(document.getElementById('mfg-energy').value) || 0;
     const overhead = parseFloat(document.getElementById('mfg-overhead').value) || 0;
     const aux = parseFloat(document.getElementById('mfg-aux').value) || 0;
-    
+
     // Equipment cost calculation
     let equipTotal = 0;
     appData.equipment.forEach(item => {
         const annualDep = item.investment / item.life;
         const unitDep = annualDep / item.capacity;
-        
+
         // Calculate factor based on volume vs capacity
         let factor = 1.0;
         const capacityRatio = volume / item.capacity;
@@ -4172,18 +4296,18 @@ function calculateAll() {
             else if (orderRatio < 1.0) factor = 1.0;
             else factor = 0; // 超过约定量不再分摊
         }
-        
+
         item.factor = factor;
         equipTotal += unitDep * factor;
     });
-    
+
     document.getElementById('mfg-equip').value = equipTotal.toFixed(2);
     const mfgTotal = energy + overhead + aux + equipTotal;
-    
+
     // Period costs - need quote first for percentage mode
     const vatRate = parseFloat(document.getElementById('other-vat').value) || 13;
     const targetMargin = parseFloat(document.getElementById('target-margin').value) || 20;
-    
+
     // Iterative calculation for period costs (depends on quote)
     let periodTotal = 0;
     let unitCost = materialTotal + laborTotal + mfgTotal;
@@ -4194,33 +4318,33 @@ function calculateAll() {
     // Simple iteration (2 passes should converge)
     for (let i = 0; i < 3; i++) {
         quoteNoVat = unitCost * (1 + targetMargin/100);
-        
+
         salesMode = document.getElementById('period-sales-mode').value;
         adminMode = document.getElementById('period-admin-mode').value;
         financeMode = document.getElementById('period-finance-mode').value;
-        
-        salesCost = salesMode === 'percent' 
+
+        salesCost = salesMode === 'percent'
             ? quoteNoVat * (parseFloat(document.getElementById('period-sales-rate').value)||3)/100
             : parseFloat(document.getElementById('period-sales-fixed').value)||0;
-        
+
         adminCost = adminMode === 'percent'
             ? quoteNoVat * (parseFloat(document.getElementById('period-admin-rate').value)||5)/100
             : parseFloat(document.getElementById('period-admin-fixed').value)||0;
-        
+
         financeCost = financeMode === 'percent'
             ? quoteNoVat * (parseFloat(document.getElementById('period-finance-rate').value)||1)/100
             : parseFloat(document.getElementById('period-finance-fixed').value)||0;
-        
+
         periodTotal = salesCost + adminCost + financeCost;
         unitCost = materialTotal + laborTotal + mfgTotal + periodTotal;
     }
-    
+
     // Other costs
     const packCost = parseFloat(document.getElementById('other-pack-cost').value) || 0;
     const logistics = parseFloat(document.getElementById('other-logistics').value) || 0;
     const defectRate = parseFloat(document.getElementById('other-defect').value) || 0;
     const otherTotal = packCost + logistics + (unitCost * defectRate / 100);
-    
+
     // Final calculations
     const finalUnitCost = unitCost + otherTotal - (unitCost * defectRate / 100); // Remove double-counted defect
     const finalQuoteNoVat = finalUnitCost * (1 + targetMargin/100);
@@ -4228,7 +4352,7 @@ function calculateAll() {
     const unitProfit = finalQuoteNoVat - finalUnitCost;
     const margin = finalQuoteNoVat > 0 ? (unitProfit / finalQuoteNoVat * 100) : 0;
     const totalProfit = unitProfit * volume;
-    
+
     // Build calculation log for formula visualization
     window.calculationLog = {
         volume,
@@ -4268,7 +4392,7 @@ function calculateAll() {
     document.getElementById('sum-mfg').textContent = '¥' + mfgTotal.toFixed(2);
     document.getElementById('sum-period').textContent = '¥' + periodTotal.toFixed(2);
     document.getElementById('sum-total').textContent = '¥' + finalUnitCost.toFixed(2);
-    
+
     document.getElementById('semi-total').textContent = '¥' + semiTotal.toFixed(2);
     document.getElementById('pack-total').textContent = '¥' + packTotal.toFixed(2);
     document.getElementById('material-total').textContent = '¥' + materialTotal.toFixed(2);
@@ -4276,7 +4400,7 @@ function calculateAll() {
     document.getElementById('mfg-total').textContent = '¥' + mfgTotal.toFixed(2);
     document.getElementById('period-total').textContent = '¥' + periodTotal.toFixed(2);
     document.getElementById('other-total').textContent = '¥' + otherTotal.toFixed(2);
-    
+
     document.getElementById('result-unit-cost').textContent = '¥' + finalUnitCost.toFixed(2);
     document.getElementById('result-quote-no-vat').textContent = '¥' + finalQuoteNoVat.toFixed(2);
     document.getElementById('result-quote-vat').textContent = '¥' + quoteWithVat.toFixed(2);
@@ -4285,17 +4409,17 @@ function calculateAll() {
     document.getElementById('result-margin').className = 'result-value ' + (margin >= 0 ? 'result-positive' : 'result-negative');
     document.getElementById('result-total-profit').textContent = '¥' + totalProfit.toLocaleString('zh-CN', {minimumFractionDigits:2, maximumFractionDigits:2});
     document.getElementById('result-total-profit').className = 'result-value ' + (totalProfit >= 0 ? 'result-positive' : 'result-negative');
-    
+
     // Update price confirm section
     document.getElementById('pc-unit-cost').textContent = '¥' + finalUnitCost.toFixed(2);
     document.getElementById('pc-suggested-price').textContent = '¥' + finalQuoteNoVat.toFixed(2);
     document.getElementById('pc-margin-rate').textContent = targetMargin + '%';
     document.getElementById('pc-final-price').value = finalQuoteNoVat.toFixed(2);
-    
+
     // Update version badge
     const version = 'V' + appData.product.version + '_' + new Date().toISOString().slice(0,10).replace(/-/g,'');
     document.getElementById('version-badge').textContent = version;
-    
+
     // Auto-save to localStorage
     syncQuotesToCurrentProduct();
     updateQuoteBar();
@@ -4447,7 +4571,7 @@ function renderCalculationLog() {
                 <div class="calc-arrow">↓</div>
                 <div class="calc-step">
                     <div class="calc-step-label">单位毛利</div>
-                    <div class="calc-step-value">¥${log.final.finalQuoteNoVat.toFixed(2)} − ¥${log.final.finalUnitCost.toFixed(2)} = <strong>¥${log.final.unitProfit.toFixed(2)}（毛利率 ${log.final.margin.toFixed(2)}%）</strong></div>
+                    <div class="calc-step-value">¥${log.final.finalQuoteNoVat.toFixed(2)} - ¥${log.final.finalUnitCost.toFixed(2)} = <strong>¥${log.final.unitProfit.toFixed(2)}（毛利率 ${log.final.margin.toFixed(2)}%）</strong></div>
                 </div>
                 <div class="calc-arrow">↓</div>
                 <div class="calc-step">
@@ -4585,30 +4709,30 @@ function toggleCalcDirection() {
 
 function calculateLadderForward() {
     const volume = parseFloat(document.getElementById('calc-volume').value) || 0;
-    
+
     // Find applicable volume ladder
     const volLadder = appData.volumeLadders.find(l => volume >= l.minQty && volume <= l.maxQty) || appData.volumeLadders[0];
-    
+
     // Find applicable quote ladder
     const quoteLadder = appData.quoteLadders.find(l => volume >= l.minQty && volume <= l.maxQty) || appData.quoteLadders[0];
-    
+
     // Get base costs
     const baseMaterial = parseFloat(document.getElementById('sum-material').textContent.replace(/[¥,]/g,'')) || 0;
     const baseLabor = parseFloat(document.getElementById('sum-labor').textContent.replace(/[¥,]/g,'')) || 0;
     const baseMfg = parseFloat(document.getElementById('sum-mfg').textContent.replace(/[¥,]/g,'')) || 0;
     const basePeriod = parseFloat(document.getElementById('sum-period').textContent.replace(/[¥,]/g,'')) || 0;
-    
+
     // Apply ladder factors
     const adjMaterial = baseMaterial * (volLadder.materialDiscount / 100);
     const adjLabor = baseLabor * (volLadder.laborEff / 100);
     const adjMfg = baseMfg * (volLadder.mfgFactor / 100);
-    
+
     const unitCost = adjMaterial + adjLabor + adjMfg + basePeriod;
     const quote = unitCost * (quoteLadder.factor / 100);
     const profit = quote - unitCost;
     const margin = quote > 0 ? (profit / quote * 100) : 0;
     const totalProfit = profit * volume;
-    
+
     const resultDiv = document.getElementById('ladder-calc-result');
     resultDiv.innerHTML = `
         <div class="result-panel">
@@ -4629,15 +4753,15 @@ function calculateLadderForward() {
 function calculateLadderReverse() {
     const targetProfit = parseFloat(document.getElementById('calc-target-profit').value) || 0;
     const minVolume = parseFloat(document.getElementById('calc-min-volume').value) || 0;
-    
+
     // Find minimum volume to achieve target profit
     const quoteLadder = appData.quoteLadders.find(l => minVolume >= l.minQty && minVolume <= l.maxQty) || appData.quoteLadders[0];
-    
+
     const baseMaterial = parseFloat(document.getElementById('sum-material').textContent.replace(/[¥,]/g,'')) || 0;
     const baseLabor = parseFloat(document.getElementById('sum-labor').textContent.replace(/[¥,]/g,'')) || 0;
     const baseMfg = parseFloat(document.getElementById('sum-mfg').textContent.replace(/[¥,]/g,'')) || 0;
     const basePeriod = parseFloat(document.getElementById('sum-period').textContent.replace(/[¥,]/g,'')) || 0;
-    
+
     // Binary search for minimum volume
     let lo = minVolume, hi = minVolume * 100, answer = hi;
     for (let iter = 0; iter < 50; iter++) {
@@ -4646,7 +4770,7 @@ function calculateLadderReverse() {
         const adjCost = baseMaterial * (volLadder.materialDiscount/100) + baseLabor * (volLadder.laborEff/100) + baseMfg * (volLadder.mfgFactor/100) + basePeriod;
         const quote = adjCost * (quoteLadder.factor / 100);
         const profit = (quote - adjCost) * mid;
-        
+
         if (profit >= targetProfit) {
             answer = mid;
             hi = mid;
@@ -4654,11 +4778,11 @@ function calculateLadderReverse() {
             lo = mid + 1;
         }
     }
-    
+
     const finalVolLadder = appData.volumeLadders.find(l => answer >= l.minQty && answer <= l.maxQty) || appData.volumeLadders[0];
     const finalCost = baseMaterial * (finalVolLadder.materialDiscount/100) + baseLabor * (finalVolLadder.laborEff/100) + baseMfg * (finalVolLadder.mfgFactor/100) + basePeriod;
     const finalQuote = finalCost * (quoteLadder.factor / 100);
-    
+
     const resultDiv = document.getElementById('ladder-calc-result');
     resultDiv.innerHTML = `
         <div class="result-panel">
@@ -4685,12 +4809,12 @@ function renderLadderCharts() {
     const baseLabor = parseFloat(document.getElementById('sum-labor').textContent.replace(/[¥,]/g,'')) || 0;
     const baseMfg = parseFloat(document.getElementById('sum-mfg').textContent.replace(/[¥,]/g,'')) || 0;
     const basePeriod = parseFloat(document.getElementById('sum-period').textContent.replace(/[¥,]/g,'')) || 0;
-    
+
     const costs = volumes.map(v => {
         const ladder = appData.volumeLadders.find(l => v >= l.minQty && v <= l.maxQty) || appData.volumeLadders[0];
         return baseMaterial * (ladder.materialDiscount/100) + baseLabor * (ladder.laborEff/100) + baseMfg * (ladder.mfgFactor/100) + basePeriod;
     });
-    
+
     const profits = volumes.map(v => {
         const ql = appData.quoteLadders.find(l => v >= l.minQty && v <= l.maxQty) || appData.quoteLadders[0];
         const ladder = appData.volumeLadders.find(l => v >= l.minQty && v <= l.maxQty) || appData.volumeLadders[0];
@@ -4698,7 +4822,7 @@ function renderLadderCharts() {
         const quote = cost * (ql.factor/100);
         return quote - cost;
     });
-    
+
     if (ladderLineChart) ladderLineChart.destroy();
     ladderLineChart = new Chart(document.getElementById('ladderLineChart'), {
         type: 'line',
@@ -4716,7 +4840,7 @@ function renderLadderCharts() {
             scales: { y: { beginAtZero: true } }
         }
     });
-    
+
     // Bar chart
     const barData = appData.volumeLadders.slice(0, 4).map(l => {
         const cost = baseMaterial * (l.materialDiscount/100) + baseLabor * (l.laborEff/100) + baseMfg * (l.mfgFactor/100) + basePeriod;
@@ -4730,7 +4854,7 @@ function renderLadderCharts() {
             profit: (quote - cost) * midVol
         };
     });
-    
+
     if (ladderBarChart) ladderBarChart.destroy();
     ladderBarChart = new Chart(document.getElementById('ladderBarChart'), {
         type: 'bar',
@@ -4752,7 +4876,7 @@ function renderLadderCharts() {
 
 function renderScenarioChart() {
     if (scenarioChart) scenarioChart.destroy();
-    
+
     scenarioChart = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
         data: {
@@ -4777,11 +4901,11 @@ function checkMOQ() {
     const minStartup = parseInt(document.getElementById('moq-min-startup').value) || 0;
     const materialMOQ = parseInt(document.getElementById('moq-material-moq').value) || 0;
     const batchMultiple = parseInt(document.getElementById('moq-batch-multiple').value) || 1;
-    
+
     const resultDiv = document.getElementById('moq-result');
     let alerts = [];
     let status = 'pass';
-    
+
     // Check 1: Order >= min startup
     if (orderQty < minStartup) {
         alerts.push(`❌ 客户订单量(${orderQty}) < 开机最小起订量(${minStartup})`);
@@ -4789,7 +4913,7 @@ function checkMOQ() {
     } else {
         alerts.push(`✅ 订单量满足开机要求`);
     }
-    
+
     // Check 2: Order >= material MOQ
     if (orderQty < materialMOQ) {
         alerts.push(`⚠️ 客户订单量(${orderQty}) < 物料MOQ(${materialMOQ})，需按MOQ采购`);
@@ -4797,22 +4921,22 @@ function checkMOQ() {
     } else {
         alerts.push(`✅ 订单量满足物料MOQ`);
     }
-    
+
     // Check 3: Batch multiple
     const suggestedQty = Math.ceil(orderQty / batchMultiple) * batchMultiple;
     if (orderQty % batchMultiple !== 0) {
         alerts.push(`ℹ️ 建议采购批量调整为: ${suggestedQty}件（${batchMultiple}的倍数）`);
     }
-    
+
     // Calculate excess inventory cost
     const materialPrice = parseFloat(document.getElementById('moq-material-price').value) || 0;
     const excessQty = Math.max(0, materialMOQ - orderQty);
     const excessCost = excessQty * materialPrice;
-    
+
     if (excessQty > 0) {
         alerts.push(`⚠️ 预计产生多余库存: ${excessQty}件，占用资金: ¥${excessCost.toFixed(2)}`);
     }
-    
+
     resultDiv.innerHTML = `
         <div class="alert ${status==='fail'?'alert-warning':'alert-info'}">
             ${alerts.join('<br>')}
@@ -4840,7 +4964,7 @@ function checkMOQ() {
 function checkEquipmentCapacity() {
     const volume = parseFloat(document.getElementById('p-volume').value) || 0;
     const alertDiv = document.getElementById('equipment-alert');
-    
+
     let alerts = [];
     appData.equipment.forEach(item => {
         if (volume > item.capacity) {
@@ -4848,9 +4972,9 @@ function checkEquipmentCapacity() {
             alerts.push(`⚠️ ${item.name}: 当前产量(${volume.toLocaleString()}) 超过最大产能(${item.capacity.toLocaleString()}) ${excess.toLocaleString()}件，超过部分将按外协成本核算`);
         }
     });
-    
-    alertDiv.innerHTML = alerts.length > 0 
-        ? `<div class="alert alert-warning">${alerts.join('<br>')}</div>` 
+
+    alertDiv.innerHTML = alerts.length > 0
+        ? `<div class="alert alert-warning">${alerts.join('<br>')}</div>`
         : '';
 }
 
@@ -4869,7 +4993,7 @@ function saveVersion() {
     const version = 'V' + id + '.0';
     const now = new Date();
     const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    
+
     appData.versions.unshift({
         id, version, time: timeStr, operator: '当前用户',
         summary: `保存版本 ${version}`,
@@ -4877,7 +5001,7 @@ function saveVersion() {
         volume: parseFloat(document.getElementById('p-volume').value) || 0,
         unitCost: parseFloat(document.getElementById('result-unit-cost').textContent.replace(/[¥,]/g,'')) || 0
     });
-    
+
     renderVersions();
     alert('版本已保存: ' + version);
 }
@@ -4901,11 +5025,11 @@ function compareVersions() {
         alert('需要至少2个版本才能对比');
         return;
     }
-    
+
     const v1 = appData.versions[0];
     const v2 = appData.versions[1];
     const diff = v1.unitCost - v2.unitCost;
-    
+
     alert(`版本对比:\n${v1.version}: ¥${v1.unitCost.toFixed(2)}\n${v2.version}: ¥${v2.unitCost.toFixed(2)}\n差异: ${diff>=0?'+':'-'}¥${Math.abs(diff).toFixed(2)} (${(diff/v2.unitCost*100).toFixed(1)}%)`);
 }
 
@@ -4992,7 +5116,7 @@ function exportTemplate(type) {
         moq: [['物料编码','物料名称','MOQ','批量倍数','单价']],
         public: [['参数名称','参数值','单位','说明']]
     };
-    
+
     const tpl = templates[type] || templates.bom;
     const ws = XLSX.utils.aoa_to_sheet(tpl);
     const wb = XLSX.utils.book_new();
@@ -5003,7 +5127,7 @@ function exportTemplate(type) {
 function importExcel(input, type) {
     const file = input.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
@@ -5011,7 +5135,7 @@ function importExcel(input, type) {
             const workbook = XLSX.read(data, { type: 'array' });
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            
+
             alert(`导入成功: ${rows.length-1} 条记录`);
             // Parse and apply data based on type
             if (type === 'bom-multilevel') {
@@ -5049,11 +5173,11 @@ function importExcel(input, type) {
 function generatePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
-    
+
     // Title
     doc.setFontSize(18);
     doc.text('产品报价单', 105, 20, { align: 'center' });
-    
+
     // Product info
     doc.setFontSize(11);
     doc.text(`产品编码: ${appData.product.code}`, 20, 35);
@@ -5062,13 +5186,13 @@ function generatePDF() {
     doc.text(`测算日期: ${document.getElementById('p-date').value}`, 120, 35);
     doc.text(`测算版本: ${document.getElementById('version-badge').textContent}`, 120, 42);
     doc.text(`基准产量: ${document.getElementById('p-volume').value}件`, 120, 49);
-    
+
     // Costs
     let y = 60;
     doc.setFontSize(12);
     doc.text('成本构成', 20, y);
     y += 8;
-    
+
     doc.setFontSize(10);
     const costs = [
         ['成本项目', '金额(元/件)'],
@@ -5079,19 +5203,19 @@ function generatePDF() {
         ['其他成本', document.getElementById('other-total').textContent],
         ['单位完全成本', document.getElementById('result-unit-cost').textContent]
     ];
-    
+
     costs.forEach((row, i) => {
         doc.text(row[0], 20, y);
         doc.text(row[1], 100, y);
         y += 6;
     });
-    
+
     // Quotation
     y += 5;
     doc.setFontSize(12);
     doc.text('报价结果', 20, y);
     y += 8;
-    
+
     doc.setFontSize(10);
     const quotes = [
         ['建议不含税报价', document.getElementById('result-quote-no-vat').textContent],
@@ -5100,13 +5224,13 @@ function generatePDF() {
         ['毛利率', document.getElementById('result-margin').textContent],
         ['总利润', document.getElementById('result-total-profit').textContent]
     ];
-    
+
     quotes.forEach(row => {
         doc.text(row[0], 20, y);
         doc.text(row[1], 100, y);
         y += 6;
     });
-    
+
     doc.save(`报价单_${appData.product.code}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
@@ -5115,7 +5239,7 @@ function optimizeQuote() {
     const targetMargin = parseFloat(document.getElementById('target-margin').value) || 20;
     const unitCost = parseFloat(document.getElementById('result-unit-cost').textContent.replace(/[¥,]/g,'')) || 0;
     const optimizedPrice = unitCost / (1 - targetMargin/100);
-    
+
     alert(`智能优化报价:\n单位成本: ¥${unitCost.toFixed(2)}\n目标毛利率: ${targetMargin}%\n建议报价: ¥${optimizedPrice.toFixed(2)}\n\n已将目标毛利率应用于报价计算。`);
 }
 
@@ -5128,7 +5252,7 @@ function toggleScenario(id) {
 function editScenario(id) {
     const s = appData.scenarios.find(s => s.id === id);
     if (!s) return;
-    
+
     const newName = prompt('场景名称:', s.name);
     if (newName) {
         s.name = newName;
@@ -5158,7 +5282,7 @@ function saveModal() {
 function editEquipment(id) {
     const item = appData.equipment.find(e => e.id === id);
     if (!item) return;
-    
+
     openModal('编辑设备', `
         <div class="form-grid">
             <div class="form-group"><label>设备编码</label><input type="text" id="modal-eq-code" value="${item.code}"></div>
@@ -5440,39 +5564,128 @@ function renderHistoryList(list) {
     const total = data.length;
     const start = (historyPage - 1) * historyPageSize;
     const pageData = data.slice(start, start + historyPageSize);
-    tbody.innerHTML = pageData.map(q => `<tr>
+    
+    // 进度状态标签样式
+    var progressMap = {
+        'draft': { label: '草稿', style: 'background:#f3f4f6;color:#6b7280' },
+        'calculating': { label: '测算中', style: 'background:#dbeafe;color:#1e40af' },
+        'cost_confirmed': { label: '成本确认', style: 'background:#fef3c7;color:#92400e' },
+        'price_confirmed': { label: '价格确认', style: 'background:#dcfce7;color:#166534' },
+        'archived': { label: '已归档', style: 'background:#ede9fe;color:#5b21b6' }
+    };
+    
+    tbody.innerHTML = pageData.map(q => {
+        var prog = progressMap[q.progress] || { label: q.progress || '-', style: 'background:#f3f4f6;color:#6b7280' };
+        return `<tr>
         <td><b>${q.quoteNo}</b></td><td>${q.productCode}</td><td>${q.productName}</td>
         <td>${q.customer || '-'}</td><td>${q.volume.toLocaleString()}</td>
         <td>¥${q.unitCost.toFixed(2)}</td><td>¥${q.quote.toFixed(2)}</td><td>${q.margin.toFixed(1)}%</td>
+        <td><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;${prog.style}">${prog.label}</span></td>
         <td>${q.createTime}</td>
         <td class="table-actions">
             <button class="btn btn-secondary btn-sm" onclick="viewQuotation(${q.id})">查看</button>
             <button class="btn btn-success btn-sm" onclick="reuseQuotation(${q.id})">复用</button>
+            <button class="btn btn-primary btn-sm" onclick="viewQuoteCostDetail(${q.id})">成本明细</button>
             <button class="btn btn-danger btn-sm" onclick="deleteQuotation(${q.id})">删除</button>
         </td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
     if (pag) {
         const pages = Math.ceil(total / historyPageSize);
         let html = '';
         for (let i = 1; i <= pages; i++) html += `<button class="btn btn-sm ${i===historyPage?'btn-primary':'btn-secondary'}" onclick="historyPage=${i};renderHistoryList()">${i}</button>`;
         pag.innerHTML = html;
     }
+    // 同步更新产品筛选下拉框选项
+    var prodSel = document.getElementById('history-product-filter');
+    if (prodSel) {
+        var currentVal = prodSel.value;
+        var opts = '<option value="">全部产品</option>';
+        var added = {};
+        for (var i = 0; i < appData.quotationHistory.length; i++) {
+            var pc = appData.quotationHistory[i].productCode;
+            var pn = appData.quotationHistory[i].productName;
+            if (pc && !added[pc]) {
+                added[pc] = true;
+                opts += '<option value="' + pc + '"' + (pc === currentVal ? ' selected' : '') + '>' + pc + ' ' + (pn || '') + '</option>';
+            }
+        }
+        prodSel.innerHTML = opts;
+    }
 }
 function searchHistory() {
     const kw = (document.getElementById('history-search')?.value || '').toLowerCase();
-    if (!kw) { historyPage = 1; renderHistoryList(); return; }
-    const filtered = appData.quotationHistory.filter(q =>
-        (q.productCode || '').toLowerCase().includes(kw) ||
-        (q.productName || '').toLowerCase().includes(kw) ||
-        (q.quoteNo || '').toLowerCase().includes(kw)
-    );
+    const prodFilter = document.getElementById('history-product-filter')?.value || '';
+    const progFilter = document.getElementById('history-progress-filter')?.value || '';
+    
+    var filtered = appData.quotationHistory.filter(q => {
+        var matchKw = !kw ||
+            (q.productCode || '').toLowerCase().includes(kw) ||
+            (q.productName || '').toLowerCase().includes(kw) ||
+            (q.quoteNo || '').toLowerCase().includes(kw);
+        var matchProd = !prodFilter || q.productCode === prodFilter;
+        var matchProg = !progFilter || q.progress === progFilter;
+        return matchKw && matchProd && matchProg;
+    });
     historyPage = 1; renderHistoryList(filtered);
 }
 function viewQuotation(id) {
     const q = appData.quotationHistory.find(x => x.id === id);
     if (!q) return;
-    alert(`报价单详情:\n单号: ${q.quoteNo}\n产品: ${q.productName} (${q.productCode})\n客户: ${q.customer}\n产量: ${q.volume}\n单位成本: ¥${q.unitCost.toFixed(2)}\n报价: ¥${q.quote.toFixed(2)}\n毛利率: ${q.margin.toFixed(1)}%\n创建: ${q.createTime}\n操作人: ${q.operator}`);
+    var progMap = { 'draft': '草稿', 'calculating': '测算中', 'cost_confirmed': '成本确认', 'price_confirmed': '价格确认', 'archived': '已归档' };
+    var progLabel = progMap[q.progress] || (q.progress || '-');
+    alert(`报价单详情:\n单号: ${q.quoteNo}\n产品: ${q.productName} (${q.productCode})\n客户: ${q.customer}\n产量: ${q.volume}\n单位成本: ¥${q.unitCost.toFixed(2)}\n报价: ¥${q.quote.toFixed(2)}\n毛利率: ${q.margin.toFixed(1)}%\n报价进度: ${progLabel}\n创建: ${q.createTime}\n操作人: ${q.operator}`);
 }
+function viewQuoteCostDetail(id) {
+    const q = appData.quotationHistory.find(x => x.id === id);
+    if (!q) { alert('未找到报价记录'); return; }
+    var snap = q.dataSnapshot;
+    var html = '<div style="max-height:400px;overflow:auto">';
+    html += '<div style="margin-bottom:12px;font-size:13px"><b>产品：</b>' + (q.productCode || '-') + ' ' + (q.productName || '') + '<br><b>报价单号：</b>' + q.quoteNo + '<br><b>创建时间：</b>' + q.createTime + '</div>';
+    if (snap) {
+        html += '<h4 style="margin:8px 0;font-size:14px">直接材料</h4>';
+        if (snap.costMaterial && snap.costMaterial.length > 0) {
+            html += '<table class="table-sm" style="width:100%;font-size:12px"><thead><tr><th>编码</th><th>名称</th><th>单价</th><th>损耗率</th></tr></thead><tbody>';
+            for (var i = 0; i < snap.costMaterial.length; i++) {
+                var m = snap.costMaterial[i];
+                html += '<tr><td>' + (m.code || '-') + '</td><td>' + (m.name || '-') + '</td><td>¥' + (m.price || 0) + '</td><td>' + (m.lossRate || 0) + '%</td></tr>';
+            }
+            html += '</tbody></table>';
+        } else { html += '<p style="color:#999;font-size:12px">无数据</p>'; }
+        html += '<h4 style="margin:8px 0;font-size:14px">直接人工</h4>';
+        if (snap.costLabor && snap.costLabor.length > 0) {
+            html += '<table class="table-sm" style="width:100%;font-size:12px"><thead><tr><th>编码</th><th>名称</th><th>单价</th><th>工时(分)</th></tr></thead><tbody>';
+            for (var i = 0; i < snap.costLabor.length; i++) {
+                var l = snap.costLabor[i];
+                html += '<tr><td>' + (l.code || '-') + '</td><td>' + (l.name || '-') + '</td><td>¥' + (l.price || 0) + '</td><td>' + (l.time || 0) + '</td></tr>';
+            }
+            html += '</tbody></table>';
+        } else { html += '<p style="color:#999;font-size:12px">无数据</p>'; }
+        html += '<h4 style="margin:8px 0;font-size:14px">制造费用</h4>';
+        if (snap.costMfg && snap.costMfg.length > 0) {
+            html += '<table class="table-sm" style="width:100%;font-size:12px"><thead><tr><th>编码</th><th>名称</th><th>单价</th><th>损耗率</th></tr></thead><tbody>';
+            for (var i = 0; i < snap.costMfg.length; i++) {
+                var m = snap.costMfg[i];
+                html += '<tr><td>' + (m.code || '-') + '</td><td>' + (m.name || '-') + '</td><td>¥' + (m.price || 0) + '</td><td>' + (m.lossRate || 0) + '%</td></tr>';
+            }
+            html += '</tbody></table>';
+        } else { html += '<p style="color:#999;font-size:12px">无数据</p>'; }
+        html += '<h4 style="margin:8px 0;font-size:14px">期间费用</h4>';
+        if (snap.costPeriod && snap.costPeriod.length > 0) {
+            html += '<table class="table-sm" style="width:100%;font-size:12px"><thead><tr><th>编码</th><th>名称</th><th>费率%</th><th>固定额</th></tr></thead><tbody>';
+            for (var i = 0; i < snap.costPeriod.length; i++) {
+                var p = snap.costPeriod[i];
+                html += '<tr><td>' + (p.code || '-') + '</td><td>' + (p.name || '-') + '</td><td>' + (p.price || 0) + '%</td><td>' + (p.fixed || 0) + '</td></tr>';
+            }
+            html += '</tbody></table>';
+        } else { html += '<p style="color:#999;font-size:12px">无数据</p>'; }
+    } else {
+        html += '<p style="color:#999">该报价未保存成本快照，无法查看成本明细。</p>';
+    }
+    html += '</div>';
+    openModal('报价成本明细 - ' + q.quoteNo, html, function() { return true; });
+}
+
 function reuseQuotation(id) {
     const q = appData.quotationHistory.find(x => x.id === id);
     if (!q || !q.dataSnapshot) { alert('无法复用：缺少数据快照'); return; }
@@ -5963,7 +6176,8 @@ function saveQuoteRecord(){
             id:newId, quoteNo:quoteNo, quoteDate:quoteDate, quoteAmount:amount, version:version,
             status:status, productCode:code, productName:name, spec:spec,
             customer:customer, volume:volume, unitCost:unitCost, margin:margin, createTime:timeStr,
-            costVersion:costVersion, costSnapshotId:costSnapshotId
+            costVersion:costVersion, costSnapshotId:costSnapshotId,
+            progress: status === 'published' ? 'price_confirmed' : (status === 'draft' ? 'draft' : 'calculating')
         });
     }
 
@@ -6257,6 +6471,22 @@ function switchCostMaintainProduct(code) {
 }
 
 function renderCostMaintain() {
+    // 先从当前产品数据加载成本数据到全局变量（确保前后联动一致）
+    var code = appData.currentProductCode;
+    var prod = getProductByCode(code);
+    if (prod) {
+        if (prod.costMaterial && prod.costMaterial.length > 0) appData.costMaterial = JSON.parse(JSON.stringify(prod.costMaterial));
+        else if (!appData.costMaterial) appData.costMaterial = [];
+        if (prod.costLabor && prod.costLabor.length > 0) appData.costLabor = JSON.parse(JSON.stringify(prod.costLabor));
+        else if (!appData.costLabor) appData.costLabor = [];
+        if (prod.costMfg && prod.costMfg.length > 0) appData.costMfg = JSON.parse(JSON.stringify(prod.costMfg));
+        else if (!appData.costMfg) appData.costMfg = [];
+        if (prod.costPeriod && prod.costPeriod.length > 0) appData.costPeriod = JSON.parse(JSON.stringify(prod.costPeriod));
+        else if (!appData.costPeriod) appData.costPeriod = [];
+        if (prod.costOther && prod.costOther.length > 0) appData.costOther = JSON.parse(JSON.stringify(prod.costOther));
+        else if (!appData.costOther) appData.costOther = [];
+    }
+
     // 渲染产品选择器
     var sel = document.getElementById('cost-maintain-product');
     if (sel) {
@@ -6317,8 +6547,11 @@ function renderCostList(type, list) {
     };
     var canEdit = role[permMap[type]] === true;
     var html = '';
+    var code = appData.currentProductCode;
     for (var i = 0; i < list.length; i++) {
         var item = list[i];
+        // 只显示当前产品的成本子项（保证前后数据联动一致）
+        if (item.productCode && item.productCode !== code) continue;
         var extra = '';
         if (type === 'labor') extra = item.time + '分';
         else if (type === 'period') extra = (item.fixed ? '固:' + item.fixed : '') + ' 费:' + item.price + '%';
@@ -6329,6 +6562,7 @@ function renderCostList(type, list) {
         html += '<td>' + (item.spec || '-') + '</td>';
         html += '<td>' + (item.price !== undefined ? item.price : '-') + '</td>';
         html += '<td>' + extra + '</td>';
+        html += '<td><span style="font-size:11px;color:var(--text-light)">' + (item.productCode || '-') + '</span></td>';
         if (canEdit) {
             html += '<td><button class="btn btn-sm btn-primary" onclick="editCostItem(\'' + type + '\',' + item.id + ')">编辑</button> ';
             html += '<button class="btn btn-sm btn-danger" onclick="deleteCostItem(\'' + type + '\',' + item.id + ')">删除</button></td>';
@@ -6338,9 +6572,9 @@ function renderCostList(type, list) {
         html += '</tr>';
     }
     if (canEdit) {
-        html += '<tr><td colspan="6" style="text-align:center"><button class="btn btn-sm btn-secondary" onclick="addCostItem(\'' + type + '\')">+ 添加子项</button></td></tr>';
+        html += '<tr><td colspan="7" style="text-align:center"><button class="btn btn-sm btn-secondary" onclick="addCostItem(\'' + type + '\')">+ 添加子项</button></td></tr>';
     }
-    tbody.innerHTML = html || '<tr><td colspan="6" style="text-align:center;color:#999">暂无数据</td></tr>';
+    tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;color:#999">暂无数据</td></tr>';
 }
 
 function addCostItem(type) {
@@ -6357,13 +6591,15 @@ function addCostItem(type) {
     var newId = 1;
     for (var i = 0; i < list.length; i++) { if (list[i].id >= newId) newId = list[i].id + 1; }
     var defaults = {
-        'material': { id: newId, code: '', name: '', spec: '', price: 0, lossRate: 0 },
-        'labor': { id: newId, code: '', name: '', spec: '', price: 0, time: 0 },
-        'mfg': { id: newId, code: '', name: '', spec: '', price: 0, lossRate: 0 },
-        'period': { id: newId, code: '', name: '', spec: '', price: 0, fixed: 0 },
-        'other': { id: newId, code: '', name: '', spec: '', price: 0, lossRate: 0 }
+        'material': { id: newId, code: '', name: '', spec: '', price: 0, lossRate: 0, productCode: appData.currentProductCode },
+        'labor': { id: newId, code: '', name: '', spec: '', price: 0, time: 0, productCode: appData.currentProductCode },
+        'mfg': { id: newId, code: '', name: '', spec: '', price: 0, lossRate: 0, productCode: appData.currentProductCode },
+        'period': { id: newId, code: '', name: '', spec: '', price: 0, fixed: 0, productCode: appData.currentProductCode },
+        'other': { id: newId, code: '', name: '', spec: '', price: 0, lossRate: 0, productCode: appData.currentProductCode }
     };
     list.push(defaults[type]);
+    syncCurrentProductToArray();
+    saveToStorage();
     renderCostList(type, list);
     editCostItem(type, newId);
 }
@@ -6877,17 +7113,17 @@ function renderCostElementPage() {
     var content = document.getElementById('cost-maintain-content');
     var fromHint = document.getElementById('cost-from-hint');
     var fromHintText = document.getElementById('cost-from-hint-text');
-    
+
     // 空产品状态处理
     var hasProducts = appData.products && appData.products.length > 0;
     if (emptyState) emptyState.style.display = hasProducts ? 'none' : 'block';
     if (content) content.style.display = hasProducts ? 'block' : 'none';
-    
+
     if (!hasProducts) {
         if (fromHint) fromHint.style.display = 'none';
         return;
     }
-    
+
     if (sel) {
         var html = '';
         for (var i = 0; i < appData.products.length; i++) {
@@ -6899,7 +7135,7 @@ function renderCostElementPage() {
         sel.innerHTML = html;
         if (!sel.value && appData.currentProductCode) sel.value = appData.currentProductCode;
     }
-    
+
     // 来源提示
     if (fromHint && fromHintText) {
         if (window._costFromQuotation && window._costFromProductCode) {
@@ -6909,13 +7145,13 @@ function renderCostElementPage() {
             fromHint.style.display = 'none';
         }
     }
-    
+
     renderCostElementList('material');
     renderCostElementList('labor');
     renderCostElementList('mfg');
     renderCostElementList('period');
     renderCostElementLogs();
-    
+
     // 添加"前往价格确认"按钮
     var gotoPriceDiv = document.getElementById('cost-goto-price');
     if (!gotoPriceDiv) {
@@ -7662,27 +7898,510 @@ function migrateOldCostData() {
 }
 
 // 增强Hook
-var __origShowPageV5 = window.showPage;
+// ==================== 最优成本测算子模块 ====================
+
+// --- 数据层 ---
+function getOptimalCostData() {
+    if (!appData.optimalCost) {
+        appData.optimalCost = {
+            conditions: [
+                { conditionId: 'material-grade', conditionName: '材质等级', optionList: ['A级', 'B级', 'C级'], isEnabled: true },
+                { conditionId: 'process-precision', conditionName: '工艺精度', optionList: ['高精度', '标准精度', '普通精度'], isEnabled: true },
+                { conditionId: 'supplier-level', conditionName: '供应商等级', optionList: ['战略供应商', '合格供应商', '临时供应商'], isEnabled: true },
+                { conditionId: 'env-standard', conditionName: '环保标准', optionList: ['ROHS', 'REACH', '无特殊要求'], isEnabled: true },
+                { conditionId: 'delivery-cycle', conditionName: '交货周期', optionList: ['7天内', '15天内', '30天内'], isEnabled: true }
+            ],
+            materialFeatures: [],
+            templates: [],
+            calcHistory: []
+        };
+    }
+    return appData.optimalCost;
+}
+
+function getMaterialFeatureBaseList() {
+    // 从现有物料库提取基础数据作为候选物料池
+    var list = [];
+    var raw = appData.rawMaterials || [];
+    for (var i = 0; i < raw.length; i++) {
+        var m = raw[i];
+        list.push({
+            materialId: 'M-' + (m.code || m.id || i),
+            materialName: m.name || '未命名物料',
+            basePrice: m.price || 0,
+            unit: m.unit || '件',
+            spec: m.spec || '-',
+            featureTags: {},
+            source: 'rawMaterials'
+        });
+    }
+    var semi = appData.semiFinished || [];
+    for (var i = 0; i < semi.length; i++) {
+        var s = semi[i];
+        list.push({
+            materialId: 'S-' + (s.code || s.id || i),
+            materialName: s.name || '未命名半成品',
+            basePrice: s.price || 0,
+            unit: s.unit || '件',
+            spec: s.spec || '-',
+            featureTags: {},
+            source: 'semiFinished'
+        });
+    }
+    // 合并已保存的物料特性关联数据
+    var oc = getOptimalCostData();
+    var saved = oc.materialFeatures || [];
+    for (var i = 0; i < saved.length; i++) {
+        var found = false;
+        for (var j = 0; j < list.length; j++) {
+            if (list[j].materialId === saved[i].materialId) {
+                list[j].featureTags = saved[i].featureTags || {};
+                list[j].basePrice = saved[i].basePrice != null ? saved[i].basePrice : list[j].basePrice;
+                found = true; break;
+            }
+        }
+        if (!found) list.push(saved[i]);
+    }
+    return list;
+}
+
+// --- 配置层 UI ---
+function renderOptimalCostPage() {
+    var page = document.getElementById('page-optimal-cost');
+    if (!page) return;
+    var oc = getOptimalCostData();
+    // 特性配置
+    var condHtml = '';
+    for (var i = 0; i < oc.conditions.length; i++) {
+        var c = oc.conditions[i];
+        condHtml += '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px">';
+        condHtml += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
+        condHtml += '<input type="checkbox" id="oc-cond-en-' + i + '"' + (c.isEnabled ? ' checked' : '') + ' style="width:16px;height:16px">';
+        condHtml += '<label style="font-weight:600">' + c.conditionName + '</label>';
+        condHtml += '<input type="text" id="oc-cond-name-' + i + '" value="' + c.conditionName + '" style="width:140px;font-size:13px">';
+        condHtml += '<button class="btn btn-danger btn-sm" onclick="deleteCondition(' + i + ')">删除</button>';
+        condHtml += '</div>';
+        condHtml += '<div style="font-size:12px;color:var(--text-light);margin-bottom:6px">可选值（逗号分隔）：</div>';
+        condHtml += '<input type="text" id="oc-cond-opts-' + i + '" value="' + (c.optionList || []).join(',') + '" style="width:100%;font-size:13px">';
+        condHtml += '</div>';
+    }
+    document.getElementById('oc-conditions-list').innerHTML = condHtml || '<p style="color:#999">暂无特性条件，请添加</p>';
+
+    // 物料特性关联列表
+    var matList = getMaterialFeatureBaseList();
+    var matHtml = '';
+    for (var i = 0; i < matList.length; i++) {
+        var m = matList[i];
+        var tags = [];
+        for (var k in m.featureTags) { tags.push(k + ':' + m.featureTags[k]); }
+        matHtml += '<tr>';
+        matHtml += '<td>' + m.materialId + '</td>';
+        matHtml += '<td>' + m.materialName + '</td>';
+        matHtml += '<td>¥' + m.basePrice.toFixed(2) + '</td>';
+        matHtml += '<td><span style="font-size:11px;color:var(--text-light)">' + (tags.join('; ') || '未设置') + '</span></td>';
+        matHtml += '<td class="table-actions"><button class="btn btn-primary btn-sm" onclick="openMaterialFeatureEdit(\'' + m.materialId + '\')">编辑特性</button></td>';
+        matHtml += '</tr>';
+    }
+    document.getElementById('oc-material-list').innerHTML = matHtml || '<tr><td colspan="5" style="text-align:center;color:#999">暂无物料数据，请先在BOM层级管理或报价测算中维护物料</td></tr>';
+
+    // 模板选择
+    var tmplOpts = '<option value="">-- 选择预设模板 --</option>';
+    for (var i = 0; i < oc.templates.length; i++) {
+        tmplOpts += '<option value="' + i + '">' + oc.templates[i].name + '</option>';
+    }
+    document.getElementById('oc-template-select').innerHTML = tmplOpts;
+
+    // 测算结果历史
+    var histHtml = '';
+    for (var i = 0; i < (oc.calcHistory || []).length; i++) {
+        var h = oc.calcHistory[i];
+        histHtml += '<tr>';
+        histHtml += '<td>' + (h.productCode || '-') + '</td>';
+        histHtml += '<td>¥' + (h.optimalTotal || 0).toFixed(2) + '</td>';
+        histHtml += '<td>¥' + (h.originalTotal || 0).toFixed(2) + '</td>';
+        histHtml += '<td>' + (h.savingsRate || 0).toFixed(1) + '%</td>';
+        histHtml += '<td>' + (h.createTime || '-') + '</td>';
+        histHtml += '<td class="table-actions"><button class="btn btn-secondary btn-sm" onclick="viewOptimalResult(' + i + ')">查看</button></td>';
+        histHtml += '</tr>';
+    }
+    document.getElementById('oc-history-list').innerHTML = histHtml || '<tr><td colspan="6" style="text-align:center;color:#999">暂无测算记录</td></tr>';
+
+    // 更新当前产品显示
+    var cp = document.getElementById('oc-current-product');
+    if (cp) {
+        var prod = getProductByCode(appData.currentProductCode);
+        cp.textContent = appData.currentProductCode ? (appData.currentProductCode + ' ' + (prod && prod.product ? prod.product.name : '')) : '未选择';
+    }
+}
+
+function saveConditions() {
+    var oc = getOptimalCostData();
+    for (var i = 0; i < oc.conditions.length; i++) {
+        oc.conditions[i].isEnabled = document.getElementById('oc-cond-en-' + i).checked;
+        oc.conditions[i].conditionName = document.getElementById('oc-cond-name-' + i).value.trim();
+        var opts = document.getElementById('oc-cond-opts-' + i).value.trim();
+        oc.conditions[i].optionList = opts ? opts.split(',').map(function(s){ return s.trim(); }).filter(function(s){ return s; }) : [];
+    }
+    syncCurrentProductToArray();
+    saveToStorage();
+    alert('特性配置已保存');
+    renderOptimalCostPage();
+}
+
+function addCondition() {
+    var oc = getOptimalCostData();
+    var names = ['材质等级', '工艺精度', '供应商等级', '环保标准', '交货周期', '表面处理', '硬度等级', '耐腐蚀等级'];
+    var idx = oc.conditions.length;
+    var defaultName = names[idx % names.length] + (idx >= names.length ? (idx - names.length + 2) : '');
+    oc.conditions.push({ conditionId: 'cond-' + Date.now(), conditionName: defaultName, optionList: ['选项A', '选项B', '选项C'], isEnabled: true });
+    syncCurrentProductToArray();
+    saveToStorage();
+    renderOptimalCostPage();
+}
+
+function deleteCondition(index) {
+    if (!confirm('确认删除该特性条件？')) return;
+    var oc = getOptimalCostData();
+    oc.conditions.splice(index, 1);
+    syncCurrentProductToArray();
+    saveToStorage();
+    renderOptimalCostPage();
+}
+
+function openMaterialFeatureEdit(materialId) {
+    var list = getMaterialFeatureBaseList();
+    var m = null;
+    for (var i = 0; i < list.length; i++) { if (list[i].materialId === materialId) { m = list[i]; break; } }
+    if (!m) return;
+    var oc = getOptimalCostData();
+    var html = '<div class="form-grid">';
+    html += '<div class="form-group"><label>物料编码</label><input type="text" id="mf-id" value="' + m.materialId + '" readonly></div>';
+    html += '<div class="form-group"><label>物料名称</label><input type="text" id="mf-name" value="' + m.materialName + '" readonly></div>';
+    html += '<div class="form-group"><label>基础单价</label><input type="number" id="mf-price" value="' + m.basePrice + '"></div>';
+    html += '</div>';
+    html += '<div style="margin-top:12px;font-weight:600;font-size:14px">特性标签：</div>';
+    for (var i = 0; i < oc.conditions.length; i++) {
+        var c = oc.conditions[i];
+        if (!c.isEnabled) continue;
+        var currentVal = m.featureTags[c.conditionName] || '';
+        html += '<div style="margin-top:8px">';
+        html += '<label style="font-size:13px">' + c.conditionName + '</label>';
+        html += '<select id="mf-tag-' + i + '" style="width:100%;margin-top:4px"><option value="">-- 未选择 --</option>';
+        for (var j = 0; j < c.optionList.length; j++) {
+            html += '<option value="' + c.optionList[j] + '"' + (c.optionList[j] === currentVal ? ' selected' : '') + '>' + c.optionList[j] + '</option>';
+        }
+        html += '</select></div>';
+    }
+    openModal('编辑物料特性 - ' + m.materialName, html, function() {
+        var newPrice = parseFloat(document.getElementById('mf-price').value);
+        if (isNaN(newPrice)) { alert('请输入有效的基础单价'); return false; }
+        var tags = {};
+        for (var i = 0; i < oc.conditions.length; i++) {
+            if (!oc.conditions[i].isEnabled) continue;
+            var v = document.getElementById('mf-tag-' + i).value;
+            if (v) tags[oc.conditions[i].conditionName] = v;
+        }
+        // 保存到 optimalCost.materialFeatures
+        var found = false;
+        for (var i = 0; i < oc.materialFeatures.length; i++) {
+            if (oc.materialFeatures[i].materialId === materialId) {
+                oc.materialFeatures[i].basePrice = newPrice;
+                oc.materialFeatures[i].featureTags = tags;
+                found = true; break;
+            }
+        }
+        if (!found) {
+            oc.materialFeatures.push({
+                materialId: materialId,
+                materialName: m.materialName,
+                basePrice: newPrice,
+                featureTags: tags,
+                unit: m.unit,
+                spec: m.spec
+            });
+        }
+        syncCurrentProductToArray();
+        saveToStorage();
+        renderOptimalCostPage();
+        return true;
+    });
+}
+
+function saveAsTemplate() {
+    var oc = getOptimalCostData();
+    var name = prompt('请输入模板名称：');
+    if (!name) return;
+    var tmpl = {
+        name: name,
+        conditions: JSON.parse(JSON.stringify(oc.conditions)),
+        createdAt: new Date().toISOString()
+    };
+    if (!oc.templates) oc.templates = [];
+    oc.templates.push(tmpl);
+    syncCurrentProductToArray();
+    saveToStorage();
+    alert('模板已保存');
+    renderOptimalCostPage();
+}
+
+function loadTemplate() {
+    var idx = document.getElementById('oc-template-select').value;
+    if (idx === '') return;
+    var oc = getOptimalCostData();
+    var tmpl = oc.templates[parseInt(idx)];
+    if (!tmpl) return;
+    if (!confirm('加载模板「' + tmpl.name + '」将覆盖当前特性配置，确认？')) return;
+    oc.conditions = JSON.parse(JSON.stringify(tmpl.conditions));
+    syncCurrentProductToArray();
+    saveToStorage();
+    renderOptimalCostPage();
+}
+
+// --- 计算层 ---
+function getTieredPrice(materialId, quantity) {
+    // 预留阶梯价对接接口：后续实现时替换为实际采购系统调用
+    var list = getMaterialFeatureBaseList();
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].materialId === materialId) return list[i].basePrice;
+    }
+    return 0;
+}
+
+function buildCurrentBOMForOptimal() {
+    // 从当前产品BOM构建测算输入
+    var code = appData.currentProductCode;
+    var prod = getProductByCode(code);
+    var bomItems = [];
+    // 尝试从 product.bom 获取
+    if (prod && prod.bom && prod.bom.length > 0) {
+        for (var i = 0; i < prod.bom.length; i++) {
+            var b = prod.bom[i];
+            bomItems.push({
+                bomItemId: b.id || ('BOM-' + i),
+                itemType: b.type || 'raw',
+                itemCode: b.code || b.materialCode || '',
+                itemName: b.name || b.materialName || '',
+                unitQty: parseFloat(b.qty || b.quantity || 1),
+                unit: b.unit || '件'
+            });
+        }
+    }
+    // 兜底：从当前原材料/半成品列表构造单层BOM
+    if (bomItems.length === 0) {
+        var raw = appData.rawMaterials || [];
+        for (var i = 0; i < raw.length; i++) {
+            var r = raw[i];
+            bomItems.push({ bomItemId: 'R-' + i, itemType: 'raw', itemCode: r.code || '', itemName: r.name || '', unitQty: 1, unit: r.unit || '件' });
+        }
+        var semi = appData.semiFinished || [];
+        for (var i = 0; i < semi.length; i++) {
+            var s = semi[i];
+            bomItems.push({ bomItemId: 'S-' + i, itemType: 'semi', itemCode: s.code || '', itemName: s.name || '', unitQty: 1, unit: s.unit || '件' });
+        }
+    }
+    return bomItems;
+}
+
+function runOptimalCostCalc() {
+    if (!appData.currentProductCode) { alert('请先选择产品'); return; }
+    var oc = getOptimalCostData();
+    // 收集勾选的测算条件
+    var selectedConditions = [];
+    for (var i = 0; i < oc.conditions.length; i++) {
+        var cb = document.getElementById('oc-calc-cond-' + i);
+        if (cb && cb.checked && oc.conditions[i].isEnabled) {
+            var val = document.getElementById('oc-calc-cond-val-' + i).value;
+            if (val) selectedConditions.push({ name: oc.conditions[i].conditionName, value: val });
+        }
+    }
+    if (selectedConditions.length === 0) { alert('请至少勾选一个测算条件并选择对应取值'); return; }
+
+    var bomItems = buildCurrentBOMForOptimal();
+    if (bomItems.length === 0) { alert('当前产品BOM为空，无法测算'); return; }
+
+    var matPool = getMaterialFeatureBaseList();
+    var totalOriginal = 0;
+    for (var i = 0; i < bomItems.length; i++) {
+        totalOriginal += bomItems[i].unitQty * getTieredPrice(bomItems[i].itemCode, 1);
+    }
+
+    // 为每个BOM项找出满足条件的候选物料
+    var candidatesPerItem = [];
+    for (var i = 0; i < bomItems.length; i++) {
+        var item = bomItems[i];
+        var cands = [];
+        // 按 itemName / itemCode 模糊匹配物料池中可替代物料
+        for (var j = 0; j < matPool.length; j++) {
+            var m = matPool[j];
+            var match = false;
+            if (item.itemCode && m.materialId.indexOf(item.itemCode) >= 0) match = true;
+            if (!match && item.itemName && m.materialName.indexOf(item.itemName) >= 0) match = true;
+            if (!match && item.itemName && item.itemName.indexOf(m.materialName) >= 0) match = true;
+            if (!match) continue;
+            // 检查是否满足所有勾选条件
+            var ok = true;
+            for (var k = 0; k < selectedConditions.length; k++) {
+                var sc = selectedConditions[k];
+                var mv = m.featureTags[sc.name];
+                if (!mv || mv !== sc.value) { ok = false; break; }
+            }
+            if (ok) cands.push({ material: m, unitPrice: m.basePrice, unitQty: item.unitQty });
+        }
+        // 如果无候选，保留原始物料（空特性标签视为通配）
+        if (cands.length === 0) {
+            var origPrice = getTieredPrice(item.itemCode, 1) || 0;
+            cands.push({ material: { materialId: item.itemCode, materialName: item.itemName, basePrice: origPrice }, unitPrice: origPrice, unitQty: item.unitQty });
+        }
+        candidatesPerItem.push(cands);
+    }
+
+    // 组合生成 + 剪枝优化
+    var bestTotal = Infinity;
+    var bestCombo = null;
+    var allCombos = [];
+    var maxCombos = 50000; // 安全上限
+
+    function dfs(idx, current, currentTotal) {
+        if (allCombos.length >= maxCombos) return;
+        if (currentTotal >= bestTotal) return; // 剪枝
+        if (idx >= candidatesPerItem.length) {
+            allCombos.push({ items: current.slice(), total: currentTotal });
+            if (currentTotal < bestTotal) {
+                bestTotal = currentTotal;
+                bestCombo = current.slice();
+            }
+            return;
+        }
+        var cands = candidatesPerItem[idx];
+        for (var i = 0; i < cands.length; i++) {
+            var c = cands[i];
+            current.push({ bomIndex: idx, materialId: c.material.materialId, materialName: c.material.materialName, unitPrice: c.unitPrice, unitQty: c.unitQty, subtotal: c.unitQty * c.unitPrice });
+            dfs(idx + 1, current, currentTotal + c.unitQty * c.unitPrice);
+            current.pop();
+        }
+    }
+    dfs(0, [], 0);
+
+    // 计算结果
+    var savings = totalOriginal > 0 ? ((totalOriginal - bestTotal) / totalOriginal * 100) : 0;
+    var result = {
+        productCode: appData.currentProductCode,
+        productName: (getProductByCode(appData.currentProductCode) || {}).productName || '-',
+        selectedConditions: selectedConditions,
+        bomItems: bomItems,
+        optimalCombo: bestCombo,
+        optimalTotal: bestTotal,
+        originalTotal: totalOriginal,
+        savingsRate: savings,
+        comboCount: allCombos.length,
+        createTime: new Date().toISOString().slice(0, 16).replace('T', ' ')
+    };
+
+    if (!oc.calcHistory) oc.calcHistory = [];
+    oc.calcHistory.unshift(result);
+    if (oc.calcHistory.length > 50) oc.calcHistory.pop();
+    syncCurrentProductToArray();
+    saveToStorage();
+    renderOptimalCostPage();
+    showOptimalResult(result);
+}
+
+function showOptimalResult(result) {
+    var html = '<div style="max-height:420px;overflow:auto">';
+    html += '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:12px">';
+    html += '<div style="font-size:16px;font-weight:700;color:#166534">最优成本测算结果</div>';
+    html += '<div style="margin-top:8px;font-size:13px">产品：' + result.productCode + ' ' + result.productName + '</div>';
+    html += '<div style="margin-top:4px;font-size:13px">原始总成本：¥' + result.originalTotal.toFixed(2) + '</div>';
+    html += '<div style="margin-top:4px;font-size:13px">最优总成本：¥' + result.optimalTotal.toFixed(2) + '</div>';
+    html += '<div style="margin-top:4px;font-size:15px;font-weight:700;color:#166534">优化率：' + result.savingsRate.toFixed(1) + '%</div>';
+    html += '<div style="margin-top:4px;font-size:12px;color:#666">遍历组合数：' + result.comboCount + '</div>';
+    html += '</div>';
+
+    html += '<div style="font-weight:600;font-size:14px;margin-bottom:6px">勾选的测算条件：</div>';
+    for (var i = 0; i < result.selectedConditions.length; i++) {
+        html += '<div style="font-size:13px;margin-bottom:2px">• ' + result.selectedConditions[i].name + ' = ' + result.selectedConditions[i].value + '</div>';
+    }
+
+    html += '<div style="font-weight:600;font-size:14px;margin:12px 0 6px">最优物料组合明细：</div>';
+    html += '<table class="table-sm" style="width:100%;font-size:12px">';
+    html += '<thead><tr><th>BOM项</th><th>选用物料</th><th>单价</th><th>用量</th><th>小计</th></tr></thead><tbody>';
+    for (var i = 0; i < (result.optimalCombo || []).length; i++) {
+        var c = result.optimalCombo[i];
+        html += '<tr><td>' + (result.bomItems[c.bomIndex].itemName || '-') + '</td>';
+        html += '<td>' + c.materialName + '</td>';
+        html += '<td>¥' + c.unitPrice.toFixed(2) + '</td>';
+        html += '<td>' + c.unitQty + '</td>';
+        html += '<td>¥' + c.subtotal.toFixed(2) + '</td></tr>';
+    }
+    html += '</tbody></table>';
+    html += '</div>';
+    openModal('最优成本测算结果', html, function() { return true; });
+}
+
+function viewOptimalResult(historyIndex) {
+    var oc = getOptimalCostData();
+    var r = oc.calcHistory[historyIndex];
+    if (!r) return;
+    showOptimalResult(r);
+}
+
+function exportOptimalResult() {
+    var oc = getOptimalCostData();
+    if (!oc.calcHistory || oc.calcHistory.length === 0) { alert('暂无测算记录可导出'); return; }
+    var rows = [['产品编码', '产品名称', '原始总成本', '最优总成本', '优化率%', '组合数', '测算条件', '创建时间']];
+    for (var i = 0; i < oc.calcHistory.length; i++) {
+        var h = oc.calcHistory[i];
+        var condStr = (h.selectedConditions || []).map(function(c){ return c.name + '=' + c.value; }).join('; ');
+        rows.push([
+            h.productCode || '-',
+            h.productName || '-',
+            h.originalTotal || 0,
+            h.optimalTotal || 0,
+            (h.savingsRate || 0).toFixed(2),
+            h.comboCount || 0,
+            condStr,
+            h.createTime || '-'
+        ]);
+    }
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '最优成本测算记录');
+    XLSX.writeFile(wb, '最优成本测算记录_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+}
+
+function renderOptimalCalcPanel() {
+    // 渲染测算条件勾选面板
+    var oc = getOptimalCostData();
+    var html = '';
+    for (var i = 0; i < oc.conditions.length; i++) {
+        var c = oc.conditions[i];
+        if (!c.isEnabled) continue;
+        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
+        html += '<input type="checkbox" id="oc-calc-cond-' + i + '" style="width:16px;height:16px">';
+        html += '<label style="font-size:13px;min-width:80px">' + c.conditionName + '</label>';
+        html += '<select id="oc-calc-cond-val-' + i + '" style="font-size:13px;min-width:120px"><option value="">-- 选择取值 --</option>';
+        for (var j = 0; j < c.optionList.length; j++) {
+            html += '<option value="' + c.optionList[j] + '">' + c.optionList[j] + '</option>';
+        }
+        html += '</select></div>';
+    }
+    if (!html) html = '<p style="color:#999">无可用的测算条件，请先配置</p>';
+    var panel = document.getElementById('oc-calc-conditions');
+    if (panel) panel.innerHTML = html;
+}
+
+// Hook showPage for optimal-cost
+var __origShowPageV5Opt = window.showPage;
 window.showPage = function(pageId) {
-    __origShowPageV5(pageId);
+    __origShowPageV5Opt(pageId);
     if (pageId === 'cost-maintain') {
         renderCostElementPage();
     }
+    if (pageId === 'optimal-cost') {
+        renderOptimalCostPage();
+        renderOptimalCalcPanel();
+    }
 };
-
-var __origLoadV5 = window.addEventListener;
-// 在页面加载完成后执行迁移和初始化
-(function() {
-    var origLoadHandler = null;
-    var oldLoad = window.onload;
-    window.onload = function() {
-        if (oldLoad) oldLoad();
-        setTimeout(function() {
-            migrateOldCostData();
-            renderCostElementPage();
-        }, 100);
-    };
-})();
 
 // ==================== END V5 ADD-ON ====================
 </script>
