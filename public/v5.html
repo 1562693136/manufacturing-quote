@@ -674,6 +674,9 @@
 <div class="nav-item" data-page="sop" onclick="showPage('sop')">
             <span class="icon">📖</span> SOP与权限
         </div>
+        <div class="nav-item" data-page="analysis" onclick="showPage('analysis')">
+            <span class="icon">📊</span> 报价分析看板
+        </div>
     </div>
 </nav>
 
@@ -2717,6 +2720,98 @@
         </div>
     </div>
 
+
+<!-- PAGE: 报价分析看板 -->
+<section id="page-analysis" class="page-section">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">📊 报价分析看板</div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <select id="analysis-product-filter" onchange="renderAnalysisDashboard()" style="width:180px;font-size:13px">
+                    <option value="">全部产品</option>
+                </select>
+                <select id="analysis-period-filter" onchange="renderAnalysisDashboard()" style="width:140px;font-size:13px">
+                    <option value="all">全部时间</option>
+                    <option value="7">近7天</option>
+                    <option value="30">近30天</option>
+                    <option value="90">近90天</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- 核心指标卡片区 -->
+            <div class="summary-bar" style="margin-bottom:20px">
+                <div class="summary-item">
+                    <div class="summary-label">总报价单数</div>
+                    <div class="summary-value" id="ana-total-quotes">0</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">平均毛利率</div>
+                    <div class="summary-value" id="ana-avg-margin">0.00%</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">平均单位成本</div>
+                    <div class="summary-value" id="ana-avg-cost">¥0.00</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">平均报价金额</div>
+                    <div class="summary-value" id="ana-avg-quote">¥0.00</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">成本优化空间</div>
+                    <div class="summary-value" id="ana-opt-space" style="color:var(--success)">0.00%</div>
+                </div>
+            </div>
+
+            <!-- 图表区 -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+                <div class="card" style="margin:0">
+                    <div class="card-header">
+                        <div class="card-title" style="font-size:14px">📈 报价趋势</div>
+                    </div>
+                    <div class="card-body" style="padding:12px">
+                        <div style="height:280px">
+                            <canvas id="chart-quote-trend"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="card" style="margin:0">
+                    <div class="card-header">
+                        <div class="card-title" style="font-size:14px">🏆 产品利润排行</div>
+                    </div>
+                    <div class="card-body" style="padding:12px">
+                        <div style="height:280px">
+                            <canvas id="chart-profit-rank"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                <div class="card" style="margin:0">
+                    <div class="card-header">
+                        <div class="card-title" style="font-size:14px">🥧 成本构成占比</div>
+                    </div>
+                    <div class="card-body" style="padding:12px">
+                        <div style="height:260px">
+                            <canvas id="chart-cost-pie"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="card" style="margin:0">
+                    <div class="card-header">
+                        <div class="card-title" style="font-size:14px">📊 毛利率分布</div>
+                    </div>
+                    <div class="card-body" style="padding:12px">
+                        <div style="height:260px">
+                            <canvas id="chart-margin-dist"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
 <!-- Filter Result Modal -->
 <div class="modal" id="filter-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:300">
@@ -5943,6 +6038,7 @@ function _newShowPage(page) {
     if (page === 'bom') { renderBomSemiList(); initBomCalcSelect(); }
     if (page === 'history') { renderHistoryList(); initDiffSelects(); }
     if (page === 'sop') { renderRoles(); }
+    if (page === 'analysis') { renderAnalysisDashboard(); }
 }
 window.showPage = _newShowPage;
 
@@ -8572,6 +8668,210 @@ function getDeliveryCoefficient(delivery) {
     if (delivery === '加急') return 1.1;
     if (delivery === '特急') return 1.2;
     return 1.0;
+}
+
+// ==================== 报价分析看板 ====================
+var analysisCharts = {};
+
+function renderAnalysisDashboard() {
+    var data = appData.quotationHistory || [];
+    var prodFilter = document.getElementById('analysis-product-filter')?.value || '';
+    var periodFilter = document.getElementById('analysis-period-filter')?.value || 'all';
+
+    // 时间过滤
+    var now = new Date();
+    var cutoff = new Date('2000-01-01');
+    if (periodFilter !== 'all') {
+        var days = parseInt(periodFilter);
+        cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    }
+
+    var filtered = data.filter(function(q) {
+        var matchProd = !prodFilter || q.productCode === prodFilter;
+        var matchTime = true;
+        if (periodFilter !== 'all' && q.createTime) {
+            var parts = q.createTime.split(/[-\s:]/);
+            if (parts.length >= 3) {
+                var qDate = new Date(parts[0], parts[1]-1, parts[2]);
+                matchTime = qDate >= cutoff;
+            }
+        }
+        return matchProd && matchTime;
+    });
+
+    // 更新产品筛选下拉框
+    var prodSel = document.getElementById('analysis-product-filter');
+    if (prodSel) {
+        var currentVal = prodSel.value;
+        var opts = '<option value="">全部产品</option>';
+        var added = {};
+        for (var i = 0; i < data.length; i++) {
+            var pc = data[i].productCode;
+            var pn = data[i].productName;
+            if (pc && !added[pc]) {
+                added[pc] = true;
+                opts += '<option value="' + pc + '"' + (pc === currentVal ? ' selected' : '') + '>' + pc + ' ' + (pn || '') + '</option>';
+            }
+        }
+        prodSel.innerHTML = opts;
+    }
+
+    // 核心指标
+    var totalQuotes = filtered.length;
+    var avgMargin = 0, avgCost = 0, avgQuote = 0, optSpace = 0;
+    if (totalQuotes > 0) {
+        var sumMargin = 0, sumCost = 0, sumQuote = 0;
+        for (var i = 0; i < filtered.length; i++) {
+            sumMargin += parseFloat(filtered[i].margin) || 0;
+            sumCost += parseFloat(filtered[i].unitCost) || 0;
+            sumQuote += parseFloat(filtered[i].quote) || 0;
+        }
+        avgMargin = sumMargin / totalQuotes;
+        avgCost = sumCost / totalQuotes;
+        avgQuote = sumQuote / totalQuotes;
+        optSpace = avgQuote > 0 ? ((avgQuote - avgCost) / avgQuote * 100) : 0;
+    }
+    document.getElementById('ana-total-quotes').textContent = totalQuotes;
+    document.getElementById('ana-avg-margin').textContent = avgMargin.toFixed(2) + '%';
+    document.getElementById('ana-avg-cost').textContent = '¥' + avgCost.toFixed(2);
+    document.getElementById('ana-avg-quote').textContent = '¥' + avgQuote.toFixed(2);
+    document.getElementById('ana-opt-space').textContent = optSpace.toFixed(2) + '%';
+
+    // 销毁旧图表
+    Object.keys(analysisCharts).forEach(function(k) {
+        if (analysisCharts[k]) { analysisCharts[k].destroy(); analysisCharts[k] = null; }
+    });
+
+    // 报价趋势折线图
+    renderQuoteTrendChart(filtered);
+    // 产品利润排行柱状图
+    renderProfitRankChart(filtered);
+    // 成本构成饼图（取最新一条记录的数据快照）
+    renderCostPieChart(filtered);
+    // 毛利率分布图
+    renderMarginDistChart(filtered);
+}
+
+function renderQuoteTrendChart(data) {
+    var ctx = document.getElementById('chart-quote-trend');
+    if (!ctx) return;
+    var sorted = data.slice().sort(function(a, b) {
+        return (a.createTime || '').localeCompare(b.createTime || '');
+    });
+    var labels = [];
+    var costs = [];
+    var quotes = [];
+    for (var i = 0; i < sorted.length; i++) {
+        labels.push(sorted[i].createTime ? sorted[i].createTime.split(' ')[0] : '');
+        costs.push(parseFloat(sorted[i].unitCost) || 0);
+        quotes.push(parseFloat(sorted[i].quote) || 0);
+    }
+    analysisCharts.trend = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: '单位成本', data: costs, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, fill: true },
+                { label: '报价金额', data: quotes, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3, fill: true }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' }, title: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+function renderProfitRankChart(data) {
+    var ctx = document.getElementById('chart-profit-rank');
+    if (!ctx) return;
+    var grouped = {};
+    for (var i = 0; i < data.length; i++) {
+        var pc = data[i].productCode || '未知';
+        var pn = data[i].productName || pc;
+        var key = pc + '|' + pn;
+        if (!grouped[key]) grouped[key] = { productCode: pc, productName: pn, sumMargin: 0, count: 0 };
+        grouped[key].sumMargin += parseFloat(data[i].margin) || 0;
+        grouped[key].count++;
+    }
+    var arr = [];
+    for (var k in grouped) { if (grouped.hasOwnProperty(k)) arr.push(grouped[k]); }
+    arr.sort(function(a, b) { return (b.sumMargin / b.count) - (a.sumMargin / a.count); });
+    arr = arr.slice(0, 10);
+    var labels = arr.map(function(x) { return x.productName; });
+    var values = arr.map(function(x) { return x.count > 0 ? (x.sumMargin / x.count) : 0; });
+    analysisCharts.rank = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{ label: '平均毛利率(%)', data: values, backgroundColor: 'rgba(59,130,246,0.7)', borderColor: '#3b82f6', borderWidth: 1 }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+
+function renderCostPieChart(data) {
+    var ctx = document.getElementById('chart-cost-pie');
+    if (!ctx) return;
+    var latest = null;
+    for (var i = data.length - 1; i >= 0; i--) {
+        if (data[i].dataSnapshot) { latest = data[i].dataSnapshot; break; }
+    }
+    var labels = ['直接材料', '直接人工', '制造费用', '期间费用', '其他成本'];
+    var values = [0, 0, 0, 0, 0];
+    if (latest) {
+        values[0] = latest.materialTotal || 0;
+        values[1] = latest.laborTotal || 0;
+        values[2] = latest.mfgTotal || 0;
+        values[3] = latest.periodTotal || 0;
+        values[4] = latest.otherTotal || 0;
+    }
+    analysisCharts.pie = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{ data: values, backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6'] }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
+        }
+    });
+}
+
+function renderMarginDistChart(data) {
+    var ctx = document.getElementById('chart-margin-dist');
+    if (!ctx) return;
+    var buckets = { '<10%': 0, '10-20%': 0, '20-30%': 0, '30-40%': 0, '>40%': 0 };
+    for (var i = 0; i < data.length; i++) {
+        var m = parseFloat(data[i].margin) || 0;
+        if (m < 10) buckets['<10%']++;
+        else if (m < 20) buckets['10-20%']++;
+        else if (m < 30) buckets['20-30%']++;
+        else if (m < 40) buckets['30-40%']++;
+        else buckets['>40%']++;
+    }
+    analysisCharts.dist = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(buckets),
+            datasets: [{ label: '报价单数', data: Object.values(buckets), backgroundColor: 'rgba(16,185,129,0.7)', borderColor: '#10b981', borderWidth: 1 }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
 }
 
 // ==================== END V5 ADD-ON ====================
