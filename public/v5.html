@@ -6481,6 +6481,81 @@ function delQuoteRecord(id){
     saveToStorage();
 }
 
+// ==================== 报价审批流程 ====================
+function submitQuoteApproval(id) {
+    var q = null;
+    for (var i = 0; i < appData.quotations.length; i++) { if (appData.quotations[i].id === id) { q = appData.quotations[i]; break; } }
+    if (!q) return;
+    if (q.status !== 'draft' && q.status !== 'rejected') { alert('只有草稿或已驳回的报价单可以提交审批'); return; }
+    // 检查成本要素是否配置
+    var ceStatus = checkCostElementsConfigured(q.productCode);
+    if (!ceStatus.configured) {
+        if (!confirm('该报价单对应产品尚未配置完整成本要素（缺失：' + ceStatus.missing.join('、') + '），是否仍要提交审批？')) return;
+    }
+    q.status = 'pending';
+    q.pendingAt = new Date().toISOString();
+    saveToStorage();
+    renderQuoteList();
+    alert('报价单 ' + q.quoteNo + ' 已提交审批，等待审核。');
+}
+
+function approveQuote(id) {
+    var q = null;
+    for (var i = 0; i < appData.quotations.length; i++) { if (appData.quotations[i].id === id) { q = appData.quotations[i]; break; } }
+    if (!q) return;
+    if (q.status !== 'pending') { alert('只有待审批的报价单可以通过'); return; }
+    var remark = prompt('审批意见（可选）：') || '';
+    q.status = 'published';
+    q.approvedAt = new Date().toISOString();
+    q.approvalRemark = remark;
+    q.approver = '管理员';
+    saveToStorage();
+    renderQuoteList();
+    alert('报价单 ' + q.quoteNo + ' 已通过审批，状态变为已生效。');
+}
+
+function rejectQuote(id) {
+    var q = null;
+    for (var i = 0; i < appData.quotations.length; i++) { if (appData.quotations[i].id === id) { q = appData.quotations[i]; break; } }
+    if (!q) return;
+    if (q.status !== 'pending') { alert('只有待审批的报价单可以驳回'); return; }
+    var reason = prompt('驳回原因（必填）：');
+    if (!reason || !reason.trim()) { alert('请输入驳回原因'); return; }
+    q.status = 'rejected';
+    q.rejectedAt = new Date().toISOString();
+    q.rejectionReason = reason.trim();
+    q.approver = '管理员';
+    saveToStorage();
+    renderQuoteList();
+    alert('报价单 ' + q.quoteNo + ' 已被驳回，原因：' + reason.trim());
+}
+
+function archiveQuote(id) {
+    var q = null;
+    for (var i = 0; i < appData.quotations.length; i++) { if (appData.quotations[i].id === id) { q = appData.quotations[i]; break; } }
+    if (!q) return;
+    if (q.status !== 'published') { alert('只有已生效的报价单可以归档'); return; }
+    if (!confirm('确认归档报价单 ' + q.quoteNo + '？归档后不可修改。')) return;
+    q.status = 'archived';
+    q.archivedAt = new Date().toISOString();
+    saveToStorage();
+    renderQuoteList();
+    alert('报价单 ' + q.quoteNo + ' 已归档。');
+}
+
+function voidQuote(id) {
+    var q = null;
+    for (var i = 0; i < appData.quotations.length; i++) { if (appData.quotations[i].id === id) { q = appData.quotations[i]; break; } }
+    if (!q) return;
+    if (q.status !== 'published') { alert('只有已生效的报价单可以作废'); return; }
+    if (!confirm('确认作废报价单 ' + q.quoteNo + '？作废后不可恢复。')) return;
+    q.status = 'void';
+    q.voidedAt = new Date().toISOString();
+    saveToStorage();
+    renderQuoteList();
+    alert('报价单 ' + q.quoteNo + ' 已作废。');
+}
+
 function renderQuoteList(){
     var no = (document.getElementById('qmf-no').value || '').toLowerCase();
     var code = (document.getElementById('qmf-code').value || '').toLowerCase();
@@ -6508,13 +6583,35 @@ function renderQuoteList(){
                 ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#fff7ed;color:#ea580c">草稿</span>'
                 : (q.status === 'archived'
                     ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#f3f4f6;color:#374151">已归档</span>'
-                    : '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#fef2f2;color:#dc2626">已失效</span>'));
+                    : (q.status === 'pending'
+                        ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#eff6ff;color:#2563eb">待审批</span>'
+                        : (q.status === 'rejected'
+                            ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#fef2f2;color:#dc2626">已驳回</span>'
+                            : '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:#fef2f2;color:#dc2626">已失效</span>'))));
         html += '<tr><td><b>' + q.quoteNo + '</b></td><td>' + q.productCode + '</td><td>' + q.productName + '</td><td>' + (q.spec || '-') + '</td><td>' + (q.customer || '-') + '</td>';
         html += '<td>&yen;' + q.quoteAmount.toLocaleString() + '</td><td>' + q.version + '</td><td>' + (q.costVersion || '-') + '</td><td>' + statusTag + '</td>';
         html += '<td>' + q.quoteDate + '</td><td>';
-        html += '<button class="btn btn-sm btn-primary" onclick="editQuoteRecord(' + q.id + ')">编辑</button> ';
-        html += '<button class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe" onclick="viewQuoteCostDetail(' + q.id + ')">成本明细</button> ';
-        html += '<button class="btn btn-sm btn-danger" onclick="delQuoteRecord(' + q.id + ')">删除</button>';
+        // 根据状态显示不同操作按钮
+        if (q.status === 'draft') {
+            html += '<button class="btn btn-sm btn-primary" onclick="editQuoteRecord(' + q.id + ')">编辑</button> ';
+            html += '<button class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe" onclick="submitQuoteApproval(' + q.id + ')">提交审批</button> ';
+            html += '<button class="btn btn-sm btn-danger" onclick="delQuoteRecord(' + q.id + ')">删除</button>';
+        } else if (q.status === 'pending') {
+            html += '<button class="btn btn-sm" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0" onclick="approveQuote(' + q.id + ')">通过</button> ';
+            html += '<button class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca" onclick="rejectQuote(' + q.id + ')">驳回</button> ';
+            html += '<button class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe" onclick="viewQuoteCostDetail(' + q.id + ')">成本明细</button>';
+        } else if (q.status === 'rejected') {
+            html += '<button class="btn btn-sm btn-primary" onclick="editQuoteRecord(' + q.id + ')">编辑</button> ';
+            html += '<button class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe" onclick="submitQuoteApproval(' + q.id + ')">重新提交</button> ';
+            html += '<button class="btn btn-sm btn-danger" onclick="delQuoteRecord(' + q.id + ')">删除</button>';
+        } else if (q.status === 'published') {
+            html += '<button class="btn btn-sm" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe" onclick="viewQuoteCostDetail(' + q.id + ')">成本明细</button> ';
+            html += '<button class="btn btn-sm" style="background:#f3f4f6;color:#374151;border:1px solid #d1d5db" onclick="archiveQuote(' + q.id + ')">归档</button> ';
+            html += '<button class="btn btn-sm btn-danger" onclick="voidQuote(' + q.id + ')">作废</button>';
+        } else {
+            html += '<button class="btn btn-sm btn-primary" onclick="editQuoteRecord(' + q.id + ')">编辑</button> ';
+            html += '<button class="btn btn-sm btn-danger" onclick="delQuoteRecord(' + q.id + ')">删除</button>';
+        }
         html += '</td></tr>';
     }
     var tbody = document.getElementById('quote-mgmt-body');
