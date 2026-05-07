@@ -674,9 +674,6 @@
 <div class="nav-item" data-page="sop" onclick="showPage('sop')">
             <span class="icon">📖</span> SOP与权限
         </div>
-        <div class="nav-item" data-page="optimal-cost" onclick="showPage('optimal-cost')">
-            <span class="icon">🧮</span> 最优成本测算
-        </div>
     </div>
 </nav>
 
@@ -820,6 +817,99 @@
                 <button class="btn btn-secondary btn-sm" onclick="importData()">📤 导入数据</button>
                 <button class="btn btn-secondary btn-sm" onclick="exportData()">📥 导出数据</button>
                 <button id="btn-save-and-config-cost" class="btn btn-success btn-sm" onclick="saveAndConfigCost()">💾 保存并配置成本</button>
+                <button class="btn btn-warning btn-sm" onclick="syncCostElementsToQuote()" title="从成本要素维护模块同步最新保存的数据">🔄 同步成本要素</button>
+                <button class="btn btn-info btn-sm" onclick="calculateOptimalCostModel()" title="基于同步后的成本要素计算最优成本模型">🧮 最优成本模型</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 自定义生产特性配置 + 物料特性关联 (V5 FEATURE MODULE) ==================== -->
+    <div class="card" id="feature-config-section" style="margin-top:20px">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <div class="card-title">⚙️ 自定义生产特性配置</div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <span style="font-size:12px;color:var(--text-light)">勾选启用特性，系统将基于特性进行最优成本测算</span>
+                <button class="btn btn-primary btn-sm" onclick="saveFeatureConfig()">💾 保存特性配置</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="form-grid" style="grid-template-columns: repeat(4, 1fr)">
+                <div class="form-group">
+                    <label class="form-label" style="display:flex;align-items:center;gap:6px">
+                        <input type="checkbox" id="feat-material-grade-enable" onchange="toggleFeatureCard('material-grade')">
+                        <span>材料等级</span>
+                    </label>
+                    <div id="card-material-grade" style="padding:12px;background:#f8fafc;border-radius:8px;opacity:0.5;transition:opacity 0.2s">
+                        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">影响材料单价系数</div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-material-grade" value="A级" checked> A级（系数1.2）</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-material-grade" value="B级" checked> B级（系数1.0）</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" name="feat-material-grade" value="C级"> C级（系数0.8）</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="display:flex;align-items:center;gap:6px">
+                        <input type="checkbox" id="feat-process-baseline-enable" onchange="toggleFeatureCard('process-baseline')">
+                        <span>工艺基准</span>
+                    </label>
+                    <div id="card-process-baseline" style="padding:12px;background:#f8fafc;border-radius:8px;opacity:0.5;transition:opacity 0.2s">
+                        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">影响工时与工价</div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-process-baseline" value="常规" checked> 常规（标准工时）</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-process-baseline" value="精密"> 精密（工时×1.3）</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" name="feat-process-baseline" value="特种"> 特种（工时×1.5）</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="display:flex;align-items:center;gap:6px">
+                        <input type="checkbox" id="feat-supplier-level-enable" onchange="toggleFeatureCard('supplier-level')">
+                        <span>供应商等级</span>
+                    </label>
+                    <div id="card-supplier-level" style="padding:12px;background:#f8fafc;border-radius:8px;opacity:0.5;transition:opacity 0.2s">
+                        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">影响采购单价与交期</div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-supplier-level" value="战略供应商" checked> 战略供应商（单价×0.95）</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-supplier-level" value="合格供应商"> 合格供应商（单价×1.0）</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" name="feat-supplier-level" value="临时供应商"> 临时供应商（单价×1.1）</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="display:flex;align-items:center;gap:6px">
+                        <input type="checkbox" id="feat-env-standard-enable" onchange="toggleFeatureCard('env-standard')">
+                        <span>环保标准</span>
+                    </label>
+                    <div id="card-env-standard" style="padding:12px;background:#f8fafc;border-radius:8px;opacity:0.5;transition:opacity 0.2s">
+                        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">影响材料成本附加费</div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-env-standard" value="ROHS" checked> ROHS（+3%）</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-env-standard" value="REACH"> REACH（+5%）</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" name="feat-env-standard" value="无卤要求"> 无卤要求（+8%）</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 物料特性关联 -->
+    <div class="card" id="material-feature-link-section" style="margin-top:20px">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <div class="card-title">🔗 物料特性关联</div>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-primary btn-sm" onclick="addMaterialFeatureLink()">+ 新增关联</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportMaterialFeatureLinks()">📥 导出Excel</button>
+                <input type="file" id="import-mfl-file" style="display:none" accept=".xlsx,.xls" onchange="importMaterialFeatureLinks(this)">
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('import-mfl-file').click()">📤 批量导入</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <p style="font-size:12px;color:var(--text-light);margin-bottom:12px">为当前产品的物料配置特性影响系数，用于最优成本测算时自动调整成本。</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>物料编码</th><th>物料名称</th><th>固定单价(元)</th><th>是否特性化</th><th>材料等级系数</th><th>工艺基准系数</th><th>供应商系数</th><th>环保系数</th><th>综合系数</th><th>特性化单价</th><th style="width:100px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="material-feature-link-tbody">
+                        <tr><td colspan="11" style="text-align:center;color:#999;padding:20px">暂无数据，请先配置成本要素或直接添加关联</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -1084,6 +1174,115 @@
                     <!-- Calculation details rendered here -->
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 最优成本测算执行面板 (V5 FEATURE MODULE) -->
+    <div class="card" id="optimal-cost-execution-section" style="margin-top:20px;border:2px solid var(--success)">
+        <div class="card-header" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);border-bottom:1px solid #bbf7d0">
+            <div class="card-title" style="color:#166534">🎯 最优成本测算执行</div>
+            <div style="display:flex;gap:10px;align-items:center">
+                <span id="optimal-exec-status" style="font-size:12px;padding:2px 8px;border-radius:4px;background:#fef3c7;color:#92400e">待同步</span>
+                <button class="btn btn-warning btn-sm" onclick="syncFeaturesToOptimalCalc()" title="将上方「自定义生产特性配置」和「物料特性关联」的数据同步到本面板，并重新计算最优成本">
+                    🔄 特性同步刷新
+                </button>
+                <button class="btn btn-success btn-sm" onclick="executeOptimalCostCalc()" title="基于同步后的特性执行最优成本测算">
+                    🧮 执行最优测算
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="form-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom:16px">
+                <div class="form-group">
+                    <label class="form-label">材料等级 <span id="exec-feat-material-grade-badge" class="field-badge badge-system">S</span></label>
+                    <select id="exec-feat-material-grade" class="form-control" onchange="onExecFeatureChange()">
+                        <option value="">-- 请选择 --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">工艺基准 <span id="exec-feat-process-baseline-badge" class="field-badge badge-system">S</span></label>
+                    <select id="exec-feat-process-baseline" class="form-control" onchange="onExecFeatureChange()">
+                        <option value="">-- 请选择 --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">供应商等级 <span id="exec-feat-supplier-level-badge" class="field-badge badge-system">S</span></label>
+                    <select id="exec-feat-supplier-level" class="form-control" onchange="onExecFeatureChange()">
+                        <option value="">-- 请选择 --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">环保标准 <span id="exec-feat-env-standard-badge" class="field-badge badge-system">S</span></label>
+                    <select id="exec-feat-env-standard" class="form-control" onchange="onExecFeatureChange()">
+                        <option value="">-- 请选择 --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">交期要求 <span class="field-badge badge-manual">M</span></label>
+                    <select id="exec-feat-delivery" class="form-control" onchange="onExecFeatureChange()">
+                        <option value="">-- 请选择 --</option>
+                        <option value="正常">正常（无附加费）</option>
+                        <option value="加急">加急（+10%制造费）</option>
+                        <option value="特急">特急（+20%制造费）</option>
+                    </select>
+                </div>
+            </div>
+            <div id="optimal-exec-hint" style="padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);font-size:13px;color:var(--info);margin-bottom:16px">
+                📋 操作步骤：1) 在上方「自定义生产特性配置」中勾选并配置特性 → 2) 在「物料特性关联」中维护物料系数 → 3) 点击「特性同步刷新」将数据同步到本面板 → 4) 点击「执行最优测算」生成最优成本模型
+            </div>
+            <!-- 测算结果区域 -->
+            <div id="optimal-exec-result" style="display:none">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:16px">
+                    <div style="text-align:center;padding:12px;background:#f0f9ff;border-radius:8px">
+                        <div style="font-size:12px;color:#64748b">标准单位完全成本</div>
+                        <div id="exec-result-standard-cost" style="font-size:20px;font-weight:700;color:#1e293b">¥0.00</div>
+                    </div>
+                    <div style="text-align:center;padding:12px;background:#f0fdf4;border-radius:8px">
+                        <div style="font-size:12px;color:#64748b">最优单位完全成本</div>
+                        <div id="exec-result-optimal-cost" style="font-size:20px;font-weight:700;color:#166534">¥0.00</div>
+                    </div>
+                    <div style="text-align:center;padding:12px;background:#fef2f2;border-radius:8px">
+                        <div style="font-size:12px;color:#64748b">特性影响差额</div>
+                        <div id="exec-result-diff" style="font-size:20px;font-weight:700;color:#dc2626">¥0.00</div>
+                    </div>
+                    <div style="text-align:center;padding:12px;background:#faf5ff;border-radius:8px">
+                        <div style="font-size:12px;color:#64748b">综合特性系数</div>
+                        <div id="exec-result-coefficient" style="font-size:20px;font-weight:700;color:#7c3aed">1.000</div>
+                    </div>
+                    <div style="text-align:center;padding:12px;background:#fff7ed;border-radius:8px">
+                        <div style="font-size:12px;color:#64748b">最优建议报价</div>
+                        <div id="exec-result-optimal-quote" style="font-size:20px;font-weight:700;color:#ea580c">¥0.00</div>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr><th>成本项目</th><th>标准成本(元/件)</th><th>特性系数</th><th>最优成本(元/件)</th><th>差额(元/件)</th><th>特性说明</th></tr>
+                        </thead>
+                        <tbody id="optimal-exec-detail-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最优成本模型展示区域 (V5 ADD-ON: 特性同步+最优模型) -->
+    <div class="card" id="optimal-cost-section" style="margin-top:20px;border:2px solid var(--info);display:none">
+        <div class="card-header" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);border-bottom:1px solid #bfdbfe">
+            <div class="card-title" style="color:#1e40af">🧮 最优成本模型分析</div>
+            <span id="optimal-cost-status" style="font-size:12px;padding:2px 8px;border-radius:4px;background:#dbeafe;color:#1e40af">基于同步特性计算</span>
+        </div>
+        <div class="card-body">
+            <div id="optimal-cost-summary" style="margin-bottom:16px"></div>
+            <div class="table-container">
+                <table id="optimal-cost-table">
+                    <thead>
+                        <tr><th>成本项目</th><th>当前值(元/件)</th><th>最优值(元/件)</th><th>优化空间</th><th>优化建议</th></tr>
+                    </thead>
+                    <tbody id="optimal-cost-tbody"></tbody>
+                </table>
+            </div>
+            <div id="optimal-cost-actions" style="margin-top:16px;display:flex;gap:12px"></div>
         </div>
     </div>
 
@@ -2529,104 +2728,6 @@
         <div id="filter-modal-body" style="padding:20px"></div>
     </div>
 </div>
-<!-- PAGE: 最优成本测算 -->
-<section id="page-optimal-cost" class="page-section">
-    <!-- 特性配置 — 横向标题卡片模式 -->
-    <div class="card">
-        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-            <div class="card-title">⚙️ 自定义生产特性配置</div>
-            <div style="display:flex;gap:8px">
-                <button class="btn btn-success btn-sm" onclick="addCondition()">+ 新增特性</button>
-                <button class="btn btn-primary btn-sm" onclick="saveConditions()">💾 保存配置</button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="oc-conditions-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px"></div>
-            <div style="margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <select id="oc-template-select" style="width:180px;font-size:13px"><option value="">-- 选择预设模板 --</option></select>
-                <button class="btn btn-secondary btn-sm" onclick="loadTemplate()">加载配置</button>
-                <button class="btn btn-secondary btn-sm" onclick="saveAsTemplate()">保存为模板</button>
-                <button class="btn btn-success btn-sm" onclick="applyTemplateAndCalc()">一键测算</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportTemplates()">导出模板</button>
-                <button class="btn btn-secondary btn-sm" onclick="importTemplates()">导入模板</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 物料特性关联 -->
-    <div class="card">
-        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-            <div>
-                <div class="card-title">🔗 物料特性关联</div>
-                <div style="font-size:12px;color:var(--text-light)">为现有物料库绑定特性标签，作为最优成本计算的候选物料池</div>
-            </div>
-            <div style="display:flex;gap:8px">
-                <button class="btn btn-success btn-sm" onclick="addOptimalCostMaterial()">+ 新增物料</button>
-                <button class="btn btn-secondary btn-sm" onclick="importMaterialsFromExcel()">📥 Excel导入</button>
-                <button class="btn btn-secondary btn-sm" onclick="downloadMaterialTemplate()">📄 下载模板</button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr><th>物料编码</th><th>物料名称</th><th>基础单价</th><th>已绑定特性</th><th>操作</th></tr>
-                    </thead>
-                    <tbody id="oc-material-list"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- 最优成本测算执行 -->
-    <div class="card">
-        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-            <div class="card-title">🧮 最优成本测算执行</div>
-            <div style="font-size:13px;color:var(--text-light)">当前产品：<span id="oc-current-product" style="font-weight:600">-</span></div>
-        </div>
-        <div class="card-body">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-                <div>
-                    <div style="font-weight:600;font-size:14px;margin-bottom:10px">选择测算条件（至少选1项）：</div>
-                    <div id="oc-calc-conditions"></div>
-                    <button class="btn btn-primary btn-sm" onclick="runOptimalCostCalc()" style="margin-top:12px">🚀 开始最优成本测算</button>
-                    <div style="margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;padding:8px;border-radius:4px">
-                        💡 算法将遍历所有满足条件的物料组合，自动剪枝，输出总成本最低的方案。响应时间 &lt; 2s。
-                    </div>
-                </div>
-                <div>
-                    <div style="font-weight:600;font-size:14px;margin-bottom:10px">测算说明：</div>
-                    <div style="font-size:13px;color:var(--text-light);line-height:1.8">
-                        <p>1. 系统从当前产品的BOM结构提取物料清单。</p>
-                        <p>2. 根据勾选的特性条件，为每类物料筛选候选替代物料。</p>
-                        <p>3. 生成所有符合条件的组合，剪枝优化后取总成本最低方案。</p>
-                        <p>4. 结果包含：最优BOM方案、成本明细、比原始报价的优化率。</p>
-                        <p>5. 预留阶梯价接口 getTieredPrice()，后续对接采购系统即可自动计算最优生产批量。</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 测算结果历史 -->
-    <div class="card">
-        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-            <div class="card-title">📊 测算结果历史</div>
-            <button class="btn btn-secondary btn-sm" onclick="exportOptimalResult()">📤 导出Excel</button>
-        </div>
-        <div class="card-body">
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr><th>产品编码</th><th>最优总成本</th><th>原始总成本</th><th>优化率</th><th>创建时间</th><th>操作</th></tr>
-                    </thead>
-                    <tbody id="oc-history-list"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</section>
-
 </main>
 
 <!-- Modal: Edit Item -->
@@ -7908,825 +8009,558 @@ function migrateOldCostData() {
 }
 
 // 增强Hook
-// ==================== 最优成本测算子模块 ====================
-
-// --- 数据层 ---
-function getOptimalCostData() {
-    if (!appData.optimalCost) {
-        appData.optimalCost = {
-            conditions: [
-                { conditionId: 'material-grade', conditionName: '材质等级', optionList: ['A级', 'B级', 'C级'], isEnabled: true },
-                { conditionId: 'process-precision', conditionName: '工艺精度', optionList: ['高精度', '标准精度', '普通精度'], isEnabled: true },
-                { conditionId: 'supplier-level', conditionName: '供应商等级', optionList: ['战略供应商', '合格供应商', '临时供应商'], isEnabled: true },
-                { conditionId: 'env-standard', conditionName: '环保标准', optionList: ['ROHS', 'REACH', '无特殊要求'], isEnabled: true },
-                { conditionId: 'delivery-cycle', conditionName: '交货周期', optionList: ['7天内', '15天内', '30天内'], isEnabled: true }
-            ],
-            materialFeatures: [],
-            templates: [],
-            calcHistory: []
-        };
-    }
-    return appData.optimalCost;
-}
-
-function getMaterialFeatureBaseList() {
-    // 从现有物料库提取基础数据作为候选物料池
-    var list = [];
-    var raw = appData.rawMaterials || [];
-    for (var i = 0; i < raw.length; i++) {
-        var m = raw[i];
-        list.push({
-            materialId: 'M-' + (m.code || m.id || i),
-            materialName: m.name || '未命名物料',
-            basePrice: m.price || 0,
-            unit: m.unit || '件',
-            spec: m.spec || '-',
-            featureTags: {},
-            source: 'rawMaterials'
-        });
-    }
-    var semi = appData.semiFinished || [];
-    for (var i = 0; i < semi.length; i++) {
-        var s = semi[i];
-        list.push({
-            materialId: 'S-' + (s.code || s.id || i),
-            materialName: s.name || '未命名半成品',
-            basePrice: s.price || 0,
-            unit: s.unit || '件',
-            spec: s.spec || '-',
-            featureTags: {},
-            source: 'semiFinished'
-        });
-    }
-    // 合并已保存的物料特性关联数据
-    var oc = getOptimalCostData();
-    var saved = oc.materialFeatures || [];
-    for (var i = 0; i < saved.length; i++) {
-        var found = false;
-        for (var j = 0; j < list.length; j++) {
-            if (list[j].materialId === saved[i].materialId) {
-                list[j].featureTags = saved[i].featureTags || {};
-                list[j].basePrice = saved[i].basePrice != null ? saved[i].basePrice : list[j].basePrice;
-                found = true; break;
-            }
-        }
-        if (!found) list.push(saved[i]);
-    }
-    return list;
-}
-
-// --- 配置层 UI ---
-function renderOptimalCostPage() {
-    var page = document.getElementById('page-optimal-cost');
-    if (!page) return;
-    var oc = getOptimalCostData();
-    // 特性配置 — 横向标题卡片模式
-    var condHtml = '';
-    for (var i = 0; i < oc.conditions.length; i++) {
-        var c = oc.conditions[i];
-        var optsStr = (c.optionList || []).join(', ');
-        condHtml += '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:0;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.05)">';
-        // 卡片头部：标题 + 开关（单行紧凑模式）
-        condHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-bottom:1px solid var(--border)">';
-        condHtml += '<div style="display:flex;align-items:center;gap:8px;flex:1">';
-        condHtml += '<input type="checkbox" id="oc-cond-en-' + i + '"' + (c.isEnabled ? ' checked' : '') + ' style="width:14px;height:14px;cursor:pointer;margin:0">';
-        condHtml += '<input type="text" id="oc-cond-name-' + i + '" value="' + c.conditionName + '" style="font-size:14px;font-weight:600;color:var(--text);background:transparent;border:none;outline:none;flex:1;min-width:80px" placeholder="特性名称">';
-        condHtml += '</div>';
-        condHtml += '<button class="btn btn-danger btn-sm" onclick="deleteCondition(' + i + ')" title="删除" style="padding:2px 8px;font-size:12px;margin-left:8px">×</button>';
-        condHtml += '</div>';
-        // 卡片中部：可选值编辑（紧凑版）
-        condHtml += '<div style="padding:10px 12px">';
-        condHtml += '<div style="display:flex;align-items:center;gap:6px">';
-        condHtml += '<span style="font-size:11px;color:var(--text-light);white-space:nowrap">可选值：</span>';
-        condHtml += '<input type="text" id="oc-cond-opts-' + i + '" value="' + optsStr + '" style="flex:1;font-size:12px;border:1px dashed var(--border);border-radius:4px;padding:5px 8px;background:#fafafa" placeholder="A级, B级, C级">';
-        condHtml += '</div>';
-        // 可选值标签预览
-        if (c.optionList && c.optionList.length > 0) {
-            condHtml += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px">';
-            for (var j = 0; j < c.optionList.length; j++) {
-                condHtml += '<span style="display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe">' + c.optionList[j] + '</span>';
-            }
-            condHtml += '</div>';
-        }
-        condHtml += '</div></div>';
-    }
-    document.getElementById('oc-conditions-list').innerHTML = condHtml || '<p style="color:#999;grid-column:1/-1">暂无特性条件，请添加</p>';
-
-    // 物料特性关联列表
-    var matList = getMaterialFeatureBaseList();
-    var matHtml = '';
-    for (var i = 0; i < matList.length; i++) {
-        var m = matList[i];
-        var tags = [];
-        for (var k in m.featureTags) { tags.push(k + ':' + m.featureTags[k]); }
-        matHtml += '<tr>';
-        matHtml += '<td>' + m.materialId + '</td>';
-        matHtml += '<td>' + m.materialName + '</td>';
-        matHtml += '<td>¥' + m.basePrice.toFixed(2) + '</td>';
-        matHtml += '<td><span style="font-size:11px;color:var(--text-light)">' + (tags.join('; ') || '未设置') + '</span></td>';
-        matHtml += '<td class="table-actions"><button class="btn btn-primary btn-sm" onclick="openMaterialFeatureEdit(\'' + m.materialId + '\')">编辑特性</button> <button class="btn btn-danger btn-sm" onclick="deleteOptimalCostMaterial(\'' + m.materialId + '\')">删除</button></td>';
-        matHtml += '</tr>';
-    }
-    document.getElementById('oc-material-list').innerHTML = matHtml || '<tr><td colspan="5" style="text-align:center;color:#999">暂无物料数据，请先在BOM层级管理或报价测算中维护物料</td></tr>';
-
-    // 模板选择
-    var tmplOpts = '<option value="">-- 选择预设模板 --</option>';
-    for (var i = 0; i < oc.templates.length; i++) {
-        tmplOpts += '<option value="' + i + '">' + oc.templates[i].name + '</option>';
-    }
-    document.getElementById('oc-template-select').innerHTML = tmplOpts;
-
-    // 测算结果历史
-    var histHtml = '';
-    for (var i = 0; i < (oc.calcHistory || []).length; i++) {
-        var h = oc.calcHistory[i];
-        histHtml += '<tr>';
-        histHtml += '<td>' + (h.productCode || '-') + '</td>';
-        histHtml += '<td>¥' + (h.optimalTotal || 0).toFixed(2) + '</td>';
-        histHtml += '<td>¥' + (h.originalTotal || 0).toFixed(2) + '</td>';
-        histHtml += '<td>' + (h.savingsRate || 0).toFixed(1) + '%</td>';
-        histHtml += '<td>' + (h.createTime || '-') + '</td>';
-        histHtml += '<td class="table-actions"><button class="btn btn-secondary btn-sm" onclick="viewOptimalResult(' + i + ')">查看</button></td>';
-        histHtml += '</tr>';
-    }
-    document.getElementById('oc-history-list').innerHTML = histHtml || '<tr><td colspan="6" style="text-align:center;color:#999">暂无测算记录</td></tr>';
-
-    // 更新当前产品显示
-    var cp = document.getElementById('oc-current-product');
-    if (cp) {
-        var prod = getProductByCode(appData.currentProductCode);
-        cp.textContent = appData.currentProductCode ? (appData.currentProductCode + ' ' + (prod && prod.product ? prod.product.name : '')) : '未选择';
-    }
-}
-
-function saveConditions() {
-    var oc = getOptimalCostData();
-    for (var i = 0; i < oc.conditions.length; i++) {
-        oc.conditions[i].isEnabled = document.getElementById('oc-cond-en-' + i).checked;
-        oc.conditions[i].conditionName = document.getElementById('oc-cond-name-' + i).value.trim();
-        var opts = document.getElementById('oc-cond-opts-' + i).value.trim();
-        oc.conditions[i].optionList = opts ? opts.split(',').map(function(s){ return s.trim(); }).filter(function(s){ return s; }) : [];
-    }
-    syncCurrentProductToArray();
-    saveToStorage();
-    alert('特性配置已保存');
-    renderOptimalCostPage();
-}
-
-function addCondition() {
-    var oc = getOptimalCostData();
-    var names = ['材质等级', '工艺精度', '供应商等级', '环保标准', '交货周期', '表面处理', '硬度等级', '耐腐蚀等级'];
-    var idx = oc.conditions.length;
-    var defaultName = names[idx % names.length] + (idx >= names.length ? (idx - names.length + 2) : '');
-    oc.conditions.push({ conditionId: 'cond-' + Date.now(), conditionName: defaultName, optionList: ['选项A', '选项B', '选项C'], isEnabled: true });
-    syncCurrentProductToArray();
-    saveToStorage();
-    renderOptimalCostPage();
-}
-
-function deleteCondition(index) {
-    if (!confirm('确认删除该特性条件？')) return;
-    var oc = getOptimalCostData();
-    oc.conditions.splice(index, 1);
-    syncCurrentProductToArray();
-    saveToStorage();
-    renderOptimalCostPage();
-}
-
-function openMaterialFeatureEdit(materialId) {
-    var list = getMaterialFeatureBaseList();
-    var m = null;
-    for (var i = 0; i < list.length; i++) { if (list[i].materialId === materialId) { m = list[i]; break; } }
-    if (!m) return;
-    var oc = getOptimalCostData();
-    var html = '<div class="form-grid">';
-    html += '<div class="form-group"><label>物料编码</label><input type="text" id="mf-id" value="' + m.materialId + '" readonly></div>';
-    html += '<div class="form-group"><label>物料名称</label><input type="text" id="mf-name" value="' + m.materialName + '" readonly></div>';
-    html += '<div class="form-group"><label>基础单价</label><input type="number" id="mf-price" value="' + m.basePrice + '"></div>';
-    html += '</div>';
-    html += '<div style="margin-top:12px;font-weight:600;font-size:14px">特性标签：</div>';
-    for (var i = 0; i < oc.conditions.length; i++) {
-        var c = oc.conditions[i];
-        if (!c.isEnabled) continue;
-        var currentVal = m.featureTags[c.conditionName] || '';
-        html += '<div style="margin-top:8px">';
-        html += '<label style="font-size:13px">' + c.conditionName + '</label>';
-        html += '<select id="mf-tag-' + i + '" style="width:100%;margin-top:4px"><option value="">-- 未选择 --</option>';
-        for (var j = 0; j < c.optionList.length; j++) {
-            html += '<option value="' + c.optionList[j] + '"' + (c.optionList[j] === currentVal ? ' selected' : '') + '>' + c.optionList[j] + '</option>';
-        }
-        html += '</select></div>';
-    }
-    openModal('编辑物料特性 - ' + m.materialName, html, function() {
-        var newPrice = parseFloat(document.getElementById('mf-price').value);
-        if (isNaN(newPrice)) { alert('请输入有效的基础单价'); return false; }
-        var tags = {};
-        for (var i = 0; i < oc.conditions.length; i++) {
-            if (!oc.conditions[i].isEnabled) continue;
-            var v = document.getElementById('mf-tag-' + i).value;
-            if (v) tags[oc.conditions[i].conditionName] = v;
-        }
-        // 保存到 optimalCost.materialFeatures
-        var found = false;
-        for (var i = 0; i < oc.materialFeatures.length; i++) {
-            if (oc.materialFeatures[i].materialId === materialId) {
-                oc.materialFeatures[i].basePrice = newPrice;
-                oc.materialFeatures[i].featureTags = tags;
-                found = true; break;
-            }
-        }
-        if (!found) {
-            oc.materialFeatures.push({
-                materialId: materialId,
-                materialName: m.materialName,
-                basePrice: newPrice,
-                featureTags: tags,
-                unit: m.unit,
-                spec: m.spec
-            });
-        }
-        syncCurrentProductToArray();
-        saveToStorage();
-        renderOptimalCostPage();
-        return true;
-    });
-}
-
-function saveAsTemplate() {
-    var oc = getOptimalCostData();
-    var name = prompt('请输入模板名称：');
-    if (!name) return;
-    // 收集当前测算条件勾选状态作为模板默认值
-    var calcDefaults = [];
-    for (var i = 0; i < oc.conditions.length; i++) {
-        var cb = document.getElementById('oc-calc-cond-' + i);
-        var val = document.getElementById('oc-calc-cond-val-' + i);
-        if (cb && val) {
-            calcDefaults.push({
-                conditionName: oc.conditions[i].conditionName,
-                checked: cb.checked,
-                value: val.value
-            });
-        }
-    }
-    var tmpl = {
-        name: name,
-        conditions: JSON.parse(JSON.stringify(oc.conditions)),
-        calcDefaults: calcDefaults,
-        createdAt: new Date().toISOString()
-    };
-    if (!oc.templates) oc.templates = [];
-    oc.templates.push(tmpl);
-    syncCurrentProductToArray();
-    saveToStorage();
-    alert('模板已保存（含测算条件默认值）');
-    renderOptimalCostPage();
-}
-
-function loadTemplate() {
-    var idx = document.getElementById('oc-template-select').value;
-    if (idx === '') return;
-    var oc = getOptimalCostData();
-    var tmpl = oc.templates[parseInt(idx)];
-    if (!tmpl) return;
-    if (!confirm('加载模板「' + tmpl.name + '」将覆盖当前特性配置，确认？')) return;
-    oc.conditions = JSON.parse(JSON.stringify(tmpl.conditions));
-    syncCurrentProductToArray();
-    saveToStorage();
-    renderOptimalCostPage();
-    // 延迟应用测算默认值
-    setTimeout(function() {
-        if (tmpl.calcDefaults) {
-            for (var i = 0; i < tmpl.calcDefaults.length; i++) {
-                var d = tmpl.calcDefaults[i];
-                // 找到对应条件索引
-                for (var j = 0; j < oc.conditions.length; j++) {
-                    if (oc.conditions[j].conditionName === d.conditionName) {
-                        var cb = document.getElementById('oc-calc-cond-' + j);
-                        var val = document.getElementById('oc-calc-cond-val-' + j);
-                        if (cb) cb.checked = d.checked;
-                        if (val) val.value = d.value || '';
-                        break;
-                    }
-                }
-            }
-        }
-    }, 50);
-    alert('模板已加载。' + (tmpl.calcDefaults ? '已同步测算条件勾选状态。' : ''));
-}
-
-function applyTemplateAndCalc() {
-    var idx = document.getElementById('oc-template-select').value;
-    if (idx === '') { alert('请先选择一个模板'); return; }
-    var oc = getOptimalCostData();
-    var tmpl = oc.templates[parseInt(idx)];
-    if (!tmpl) return;
-    if (!confirm('应用模板「' + tmpl.name + '」并立即开始最优成本测算？')) return;
-    // 先加载配置
-    oc.conditions = JSON.parse(JSON.stringify(tmpl.conditions));
-    syncCurrentProductToArray();
-    saveToStorage();
-    renderOptimalCostPage();
-    // 立即应用测算默认值并执行
-    setTimeout(function() {
-        if (tmpl.calcDefaults) {
-            for (var i = 0; i < tmpl.calcDefaults.length; i++) {
-                var d = tmpl.calcDefaults[i];
-                for (var j = 0; j < oc.conditions.length; j++) {
-                    if (oc.conditions[j].conditionName === d.conditionName) {
-                        var cb = document.getElementById('oc-calc-cond-' + j);
-                        var val = document.getElementById('oc-calc-cond-val-' + j);
-                        if (cb) cb.checked = d.checked;
-                        if (val) val.value = d.value || '';
-                        break;
-                    }
-                }
-            }
-        }
-        // 自动执行测算
-        runOptimalCostCalc();
-    }, 100);
-}
-
-function exportTemplates() {
-    var oc = getOptimalCostData();
-    if (!oc.templates || oc.templates.length === 0) { alert('暂无模板可导出'); return; }
-    var data = JSON.stringify(oc.templates, null, 2);
-    var blob = new Blob([data], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = '最优成本测算模板_' + new Date().toISOString().slice(0, 10) + '.json';
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-function importTemplates() {
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json';
-    input.onchange = function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function(evt) {
-            try {
-                var imported = JSON.parse(evt.target.result);
-                if (!Array.isArray(imported)) { alert('导入文件格式错误：应为模板数组'); return; }
-                var oc = getOptimalCostData();
-                if (!oc.templates) oc.templates = [];
-                var added = 0;
-                for (var i = 0; i < imported.length; i++) {
-                    var t = imported[i];
-                    if (t && t.name && Array.isArray(t.conditions)) {
-                        // 去重：同名模板覆盖
-                        var found = false;
-                        for (var j = 0; j < oc.templates.length; j++) {
-                            if (oc.templates[j].name === t.name) {
-                                oc.templates[j] = t;
-                                found = true; break;
-                            }
-                        }
-                        if (!found) { oc.templates.push(t); added++; }
-                    }
-                }
-                syncCurrentProductToArray();
-                saveToStorage();
-                renderOptimalCostPage();
-                alert('导入完成。新增 ' + added + ' 个模板，重复名称已覆盖。');
-            } catch (err) {
-                alert('导入失败：' + err.message);
-            }
-        };
-        reader.readAsText(file);
-    };
-    input.click();
-}
-
-// --- 计算层 ---
-function getTieredPrice(materialId, quantity) {
-    // 预留阶梯价对接接口：后续实现时替换为实际采购系统调用
-    var list = getMaterialFeatureBaseList();
-    for (var i = 0; i < list.length; i++) {
-        if (list[i].materialId === materialId) return list[i].basePrice;
-    }
-    return 0;
-}
-
-function buildCurrentBOMForOptimal() {
-    // 从当前产品BOM构建测算输入
-    var code = appData.currentProductCode;
-    var prod = getProductByCode(code);
-    var bomItems = [];
-    // 尝试从 product.bom 获取
-    if (prod && prod.bom && prod.bom.length > 0) {
-        for (var i = 0; i < prod.bom.length; i++) {
-            var b = prod.bom[i];
-            bomItems.push({
-                bomItemId: b.id || ('BOM-' + i),
-                itemType: b.type || 'raw',
-                itemCode: b.code || b.materialCode || '',
-                itemName: b.name || b.materialName || '',
-                unitQty: parseFloat(b.qty || b.quantity || 1),
-                unit: b.unit || '件'
-            });
-        }
-    }
-    // 兜底：从当前原材料/半成品列表构造单层BOM
-    if (bomItems.length === 0) {
-        var raw = appData.rawMaterials || [];
-        for (var i = 0; i < raw.length; i++) {
-            var r = raw[i];
-            bomItems.push({ bomItemId: 'R-' + i, itemType: 'raw', itemCode: r.code || '', itemName: r.name || '', unitQty: 1, unit: r.unit || '件' });
-        }
-        var semi = appData.semiFinished || [];
-        for (var i = 0; i < semi.length; i++) {
-            var s = semi[i];
-            bomItems.push({ bomItemId: 'S-' + i, itemType: 'semi', itemCode: s.code || '', itemName: s.name || '', unitQty: 1, unit: s.unit || '件' });
-        }
-    }
-    return bomItems;
-}
-
-function runOptimalCostCalc() {
-    if (!appData.currentProductCode) { alert('请先选择产品'); return; }
-    var oc = getOptimalCostData();
-    // 收集勾选的测算条件
-    var selectedConditions = [];
-    for (var i = 0; i < oc.conditions.length; i++) {
-        var cb = document.getElementById('oc-calc-cond-' + i);
-        if (cb && cb.checked && oc.conditions[i].isEnabled) {
-            var val = document.getElementById('oc-calc-cond-val-' + i).value;
-            if (val) selectedConditions.push({ name: oc.conditions[i].conditionName, value: val });
-        }
-    }
-    if (selectedConditions.length === 0) { alert('请至少勾选一个测算条件并选择对应取值'); return; }
-
-    var bomItems = buildCurrentBOMForOptimal();
-    if (bomItems.length === 0) { alert('当前产品BOM为空，无法测算'); return; }
-
-    var matPool = getMaterialFeatureBaseList();
-    var totalOriginal = 0;
-    for (var i = 0; i < bomItems.length; i++) {
-        totalOriginal += bomItems[i].unitQty * getTieredPrice(bomItems[i].itemCode, 1);
-    }
-
-    // 为每个BOM项找出满足条件的候选物料
-    var candidatesPerItem = [];
-    for (var i = 0; i < bomItems.length; i++) {
-        var item = bomItems[i];
-        var cands = [];
-        // 按 itemName / itemCode 模糊匹配物料池中可替代物料
-        for (var j = 0; j < matPool.length; j++) {
-            var m = matPool[j];
-            var match = false;
-            if (item.itemCode && m.materialId.indexOf(item.itemCode) >= 0) match = true;
-            if (!match && item.itemName && m.materialName.indexOf(item.itemName) >= 0) match = true;
-            if (!match && item.itemName && item.itemName.indexOf(m.materialName) >= 0) match = true;
-            if (!match) continue;
-            // 检查是否满足所有勾选条件
-            var ok = true;
-            for (var k = 0; k < selectedConditions.length; k++) {
-                var sc = selectedConditions[k];
-                var mv = m.featureTags[sc.name];
-                if (!mv || mv !== sc.value) { ok = false; break; }
-            }
-            if (ok) cands.push({ material: m, unitPrice: m.basePrice, unitQty: item.unitQty });
-        }
-        // 如果无候选，保留原始物料（空特性标签视为通配）
-        if (cands.length === 0) {
-            var origPrice = getTieredPrice(item.itemCode, 1) || 0;
-            cands.push({ material: { materialId: item.itemCode, materialName: item.itemName, basePrice: origPrice }, unitPrice: origPrice, unitQty: item.unitQty });
-        }
-        candidatesPerItem.push(cands);
-    }
-
-    // 组合生成 + 剪枝优化
-    var bestTotal = Infinity;
-    var bestCombo = null;
-    var allCombos = [];
-    var maxCombos = 50000; // 安全上限
-
-    function dfs(idx, current, currentTotal) {
-        if (allCombos.length >= maxCombos) return;
-        if (currentTotal >= bestTotal) return; // 剪枝
-        if (idx >= candidatesPerItem.length) {
-            allCombos.push({ items: current.slice(), total: currentTotal });
-            if (currentTotal < bestTotal) {
-                bestTotal = currentTotal;
-                bestCombo = current.slice();
-            }
-            return;
-        }
-        var cands = candidatesPerItem[idx];
-        for (var i = 0; i < cands.length; i++) {
-            var c = cands[i];
-            current.push({ bomIndex: idx, materialId: c.material.materialId, materialName: c.material.materialName, unitPrice: c.unitPrice, unitQty: c.unitQty, subtotal: c.unitQty * c.unitPrice });
-            dfs(idx + 1, current, currentTotal + c.unitQty * c.unitPrice);
-            current.pop();
-        }
-    }
-    dfs(0, [], 0);
-
-    // 计算结果
-    var savings = totalOriginal > 0 ? ((totalOriginal - bestTotal) / totalOriginal * 100) : 0;
-    var result = {
-        productCode: appData.currentProductCode,
-        productName: (getProductByCode(appData.currentProductCode) || {}).productName || '-',
-        selectedConditions: selectedConditions,
-        bomItems: bomItems,
-        optimalCombo: bestCombo,
-        optimalTotal: bestTotal,
-        originalTotal: totalOriginal,
-        savingsRate: savings,
-        comboCount: allCombos.length,
-        createTime: new Date().toISOString().slice(0, 16).replace('T', ' ')
-    };
-
-    if (!oc.calcHistory) oc.calcHistory = [];
-    oc.calcHistory.unshift(result);
-    if (oc.calcHistory.length > 50) oc.calcHistory.pop();
-    syncCurrentProductToArray();
-    saveToStorage();
-    renderOptimalCostPage();
-    showOptimalResult(result);
-}
-
-function showOptimalResult(result) {
-    var html = '<div style="max-height:420px;overflow:auto">';
-    html += '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-bottom:12px">';
-    html += '<div style="font-size:16px;font-weight:700;color:#166534">最优成本测算结果</div>';
-    html += '<div style="margin-top:8px;font-size:13px">产品：' + result.productCode + ' ' + result.productName + '</div>';
-    html += '<div style="margin-top:4px;font-size:13px">原始总成本：¥' + result.originalTotal.toFixed(2) + '</div>';
-    html += '<div style="margin-top:4px;font-size:13px">最优总成本：¥' + result.optimalTotal.toFixed(2) + '</div>';
-    html += '<div style="margin-top:4px;font-size:15px;font-weight:700;color:#166534">优化率：' + result.savingsRate.toFixed(1) + '%</div>';
-    html += '<div style="margin-top:4px;font-size:12px;color:#666">遍历组合数：' + result.comboCount + '</div>';
-    html += '</div>';
-
-    html += '<div style="font-weight:600;font-size:14px;margin-bottom:6px">勾选的测算条件：</div>';
-    for (var i = 0; i < result.selectedConditions.length; i++) {
-        html += '<div style="font-size:13px;margin-bottom:2px">• ' + result.selectedConditions[i].name + ' = ' + result.selectedConditions[i].value + '</div>';
-    }
-
-    html += '<div style="font-weight:600;font-size:14px;margin:12px 0 6px">最优物料组合明细：</div>';
-    html += '<table class="table-sm" style="width:100%;font-size:12px">';
-    html += '<thead><tr><th>BOM项</th><th>选用物料</th><th>单价</th><th>用量</th><th>小计</th></tr></thead><tbody>';
-    for (var i = 0; i < (result.optimalCombo || []).length; i++) {
-        var c = result.optimalCombo[i];
-        html += '<tr><td>' + (result.bomItems[c.bomIndex].itemName || '-') + '</td>';
-        html += '<td>' + c.materialName + '</td>';
-        html += '<td>¥' + c.unitPrice.toFixed(2) + '</td>';
-        html += '<td>' + c.unitQty + '</td>';
-        html += '<td>¥' + c.subtotal.toFixed(2) + '</td></tr>';
-    }
-    html += '</tbody></table>';
-    html += '</div>';
-    openModal('最优成本测算结果', html, function() { return true; });
-}
-
-function viewOptimalResult(historyIndex) {
-    var oc = getOptimalCostData();
-    var r = oc.calcHistory[historyIndex];
-    if (!r) return;
-    showOptimalResult(r);
-}
-
-function exportOptimalResult() {
-    var oc = getOptimalCostData();
-    if (!oc.calcHistory || oc.calcHistory.length === 0) { alert('暂无测算记录可导出'); return; }
-    var rows = [['产品编码', '产品名称', '原始总成本', '最优总成本', '优化率%', '组合数', '测算条件', '创建时间']];
-    for (var i = 0; i < oc.calcHistory.length; i++) {
-        var h = oc.calcHistory[i];
-        var condStr = (h.selectedConditions || []).map(function(c){ return c.name + '=' + c.value; }).join('; ');
-        rows.push([
-            h.productCode || '-',
-            h.productName || '-',
-            h.originalTotal || 0,
-            h.optimalTotal || 0,
-            (h.savingsRate || 0).toFixed(2),
-            h.comboCount || 0,
-            condStr,
-            h.createTime || '-'
-        ]);
-    }
-    var ws = XLSX.utils.aoa_to_sheet(rows);
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '最优成本测算记录');
-    XLSX.writeFile(wb, '最优成本测算记录_' + new Date().toISOString().slice(0, 10) + '.xlsx');
-}
-
-// --- 物料管理（新增/导入/删除）---
-function addOptimalCostMaterial() {
-    var oc = getOptimalCostData();
-    var html = '<div class="form-grid">';
-    html += '<div class="form-group"><label>物料编码 <span style="color:#dc2626">*</span></label><input type="text" id="ocm-code" placeholder="如：MAT-001" style="width:100%"></div>';
-    html += '<div class="form-group"><label>物料名称 <span style="color:#dc2626">*</span></label><input type="text" id="ocm-name" placeholder="如：ABS塑料" style="width:100%"></div>';
-    html += '<div class="form-group"><label>基础单价（元）<span style="color:#dc2626">*</span></label><input type="number" id="ocm-price" placeholder="0.00" step="0.01" style="width:100%"></div>';
-    html += '<div class="form-group"><label>规格</label><input type="text" id="ocm-spec" placeholder="如：3mm 黑色" style="width:100%"></div>';
-    html += '<div class="form-group"><label>单位</label><input type="text" id="ocm-unit" placeholder="如：kg / 件 / m" value="件" style="width:100%"></div>';
-    html += '</div>';
-    html += '<div style="margin-top:12px;font-size:12px;color:var(--text-light)">新增物料将直接进入最优成本测算候选池，不会同步到BOM层级管理的物料库。</div>';
-    openModal('新增候选物料', html, function() {
-        var code = document.getElementById('ocm-code').value.trim();
-        var name = document.getElementById('ocm-name').value.trim();
-        var price = parseFloat(document.getElementById('ocm-price').value);
-        var spec = document.getElementById('ocm-spec').value.trim();
-        var unit = document.getElementById('ocm-unit').value.trim() || '件';
-        if (!code) { alert('请输入物料编码'); return false; }
-        if (!name) { alert('请输入物料名称'); return false; }
-        if (isNaN(price) || price < 0) { alert('请输入有效的基础单价'); return false; }
-        // 检查重复编码
-        var list = getMaterialFeatureBaseList();
-        for (var i = 0; i < list.length; i++) {
-            if (list[i].materialId === code) { alert('物料编码「' + code + '」已存在'); return false; }
-        }
-        // 保存到 optimalCost.materialFeatures
-        if (!oc.materialFeatures) oc.materialFeatures = [];
-        oc.materialFeatures.push({
-            materialId: code,
-            materialName: name,
-            basePrice: price,
-            spec: spec,
-            unit: unit,
-            featureTags: {},
-            source: 'optimal-cost-manual'
-        });
-        syncCurrentProductToArray();
-        saveToStorage();
-        renderOptimalCostPage();
-        alert('物料「' + name + '」已添加');
-        return true;
-    });
-}
-
-function deleteOptimalCostMaterial(materialId) {
-    if (!confirm('确认删除该物料？删除后不可恢复。')) return;
-    var oc = getOptimalCostData();
-    // 仅从 materialFeatures 中删除（手动添加的）
-    var idx = -1;
-    for (var i = 0; i < (oc.materialFeatures || []).length; i++) {
-        if (oc.materialFeatures[i].materialId === materialId) { idx = i; break; }
-    }
-    if (idx >= 0) {
-        oc.materialFeatures.splice(idx, 1);
-        syncCurrentProductToArray();
-        saveToStorage();
-        renderOptimalCostPage();
-        alert('已删除');
-    } else {
-        alert('该物料来自BOM层级管理，请前往「BOM层级管理」删除。');
-    }
-}
-
-function downloadMaterialTemplate() {
-    var headers = ['物料编码', '物料名称', '基础单价', '规格', '单位', '材质等级', '工艺精度', '供应商等级', '环保标准', '交货周期'];
-    var sample = [
-        'MAT-001', 'ABS塑料', '12.50', '3mm 黑色', 'kg', 'A级', '高精度', '战略供应商', 'ROHS', '7天内'
-    ];
-    var ws = XLSX.utils.aoa_to_sheet([headers, sample]);
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '物料导入模板');
-    // 设置列宽
-    ws['!cols'] = [
-        {wch:14}, {wch:16}, {wch:12}, {wch:14}, {wch:8},
-        {wch:12}, {wch:12}, {wch:14}, {wch:12}, {wch:10}
-    ];
-    XLSX.writeFile(wb, '最优成本_物料导入模板.xlsx');
-}
-
-function importMaterialsFromExcel() {
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.xlsx,.xls';
-    input.onchange = function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function(evt) {
-            try {
-                var data = new Uint8Array(evt.target.result);
-                var workbook = XLSX.read(data, { type: 'array' });
-                var firstSheet = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheet];
-                var json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                if (json.length < 2) { alert('Excel文件为空或格式错误'); return; }
-
-                var headers = json[0];
-                // 映射列索引（支持中文表头）
-                var colMap = {};
-                var required = ['物料编码', '物料名称', '基础单价'];
-                for (var i = 0; i < headers.length; i++) {
-                    var h = String(headers[i] || '').trim();
-                    if (h === '物料编码' || h === '编码' || h === 'code') colMap.code = i;
-                    if (h === '物料名称' || h === '名称' || h === 'name') colMap.name = i;
-                    if (h === '基础单价' || h === '单价' || h === 'price') colMap.price = i;
-                    if (h === '规格' || h === 'spec') colMap.spec = i;
-                    if (h === '单位' || h === 'unit') colMap.unit = i;
-                    // 特性列
-                    if (h === '材质等级') colMap['材质等级'] = i;
-                    if (h === '工艺精度') colMap['工艺精度'] = i;
-                    if (h === '供应商等级') colMap['供应商等级'] = i;
-                    if (h === '环保标准') colMap['环保标准'] = i;
-                    if (h === '交货周期') colMap['交货周期'] = i;
-                }
-                if (colMap.code == null || colMap.name == null || colMap.price == null) {
-                    alert('Excel表头缺少必填列：物料编码、物料名称、基础单价\n当前表头：' + headers.join(', '));
-                    return;
-                }
-
-                var oc = getOptimalCostData();
-                if (!oc.materialFeatures) oc.materialFeatures = [];
-                var added = 0, skipped = 0, updated = 0;
-                var existingIds = [];
-                var list = getMaterialFeatureBaseList();
-                for (var k = 0; k < list.length; k++) existingIds.push(list[k].materialId);
-
-                for (var r = 1; r < json.length; r++) {
-                    var row = json[r];
-                    if (!row || row.length === 0) continue;
-                    var code = String(row[colMap.code] || '').trim();
-                    var name = String(row[colMap.name] || '').trim();
-                    var price = parseFloat(row[colMap.price]);
-                    if (!code || !name || isNaN(price)) { skipped++; continue; }
-
-                    var spec = colMap.spec != null ? String(row[colMap.spec] || '').trim() : '';
-                    var unit = colMap.unit != null ? String(row[colMap.unit] || '').trim() : '件';
-                    var featureTags = {};
-                    var tagNames = ['材质等级', '工艺精度', '供应商等级', '环保标准', '交货周期'];
-                    for (var t = 0; t < tagNames.length; t++) {
-                        var colIdx = colMap[tagNames[t]];
-                        if (colIdx != null && row[colIdx]) {
-                            featureTags[tagNames[t]] = String(row[colIdx]).trim();
-                        }
-                    }
-
-                    var foundIdx = -1;
-                    for (var m = 0; m < oc.materialFeatures.length; m++) {
-                        if (oc.materialFeatures[m].materialId === code) { foundIdx = m; break; }
-                    }
-                    var item = {
-                        materialId: code,
-                        materialName: name,
-                        basePrice: price,
-                        spec: spec,
-                        unit: unit || '件',
-                        featureTags: featureTags,
-                        source: 'optimal-cost-import'
-                    };
-                    if (foundIdx >= 0) {
-                        oc.materialFeatures[foundIdx] = item;
-                        updated++;
-                    } else {
-                        oc.materialFeatures.push(item);
-                        added++;
-                    }
-                }
-                syncCurrentProductToArray();
-                saveToStorage();
-                renderOptimalCostPage();
-                alert('导入完成。新增 ' + added + ' 条，更新 ' + updated + ' 条，跳过 ' + skipped + ' 条（数据不完整或编码重复）。');
-            } catch (err) {
-                alert('导入失败：' + err.message);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    };
-    input.click();
-}
-
-function renderOptimalCalcPanel() {
-    // 渲染测算条件勾选面板
-    var oc = getOptimalCostData();
-    var html = '';
-    for (var i = 0; i < oc.conditions.length; i++) {
-        var c = oc.conditions[i];
-        if (!c.isEnabled) continue;
-        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">';
-        html += '<input type="checkbox" id="oc-calc-cond-' + i + '" style="width:16px;height:16px">';
-        html += '<label style="font-size:13px;min-width:80px">' + c.conditionName + '</label>';
-        html += '<select id="oc-calc-cond-val-' + i + '" style="font-size:13px;min-width:120px"><option value="">-- 选择取值 --</option>';
-        for (var j = 0; j < c.optionList.length; j++) {
-            html += '<option value="' + c.optionList[j] + '">' + c.optionList[j] + '</option>';
-        }
-        html += '</select></div>';
-    }
-    if (!html) html = '<p style="color:#999">无可用的测算条件，请先配置</p>';
-    var panel = document.getElementById('oc-calc-conditions');
-    if (panel) panel.innerHTML = html;
-}
-
-// Hook showPage for optimal-cost
-var __origShowPageV5Opt = window.showPage;
+var __origShowPageV5 = window.showPage;
 window.showPage = function(pageId) {
-    __origShowPageV5Opt(pageId);
+    __origShowPageV5(pageId);
     if (pageId === 'cost-maintain') {
         renderCostElementPage();
     }
-    if (pageId === 'optimal-cost') {
-        renderOptimalCostPage();
-        renderOptimalCalcPanel();
-    }
 };
+
+var __origLoadV5 = window.addEventListener;
+// 在页面加载完成后执行迁移和初始化
+(function() {
+    var origLoadHandler = null;
+    var oldLoad = window.onload;
+    window.onload = function() {
+        if (oldLoad) oldLoad();
+        setTimeout(function() {
+            migrateOldCostData();
+            renderCostElementPage();
+        }, 100);
+    };
+})();
+
+// ==================== 自定义生产特性配置 (V5 FEATURE MODULE) ====================
+
+function toggleFeatureCard(cardId) {
+    var checkbox = document.getElementById('feat-' + cardId + '-enable');
+    var card = document.getElementById('card-' + cardId);
+    if (!checkbox || !card) return;
+    if (checkbox.checked) {
+        card.style.opacity = '1';
+        card.style.pointerEvents = 'auto';
+    } else {
+        card.style.opacity = '0.5';
+        card.style.pointerEvents = 'none';
+    }
+}
+
+function saveFeatureConfig() {
+    if (!appData.featureConfig) appData.featureConfig = {};
+    var cfg = appData.featureConfig;
+    cfg.materialGrade = {
+        enabled: document.getElementById('feat-material-grade-enable').checked,
+        options: getCheckedValues('feat-material-grade')
+    };
+    cfg.processBaseline = {
+        enabled: document.getElementById('feat-process-baseline-enable').checked,
+        options: getCheckedValues('feat-process-baseline')
+    };
+    cfg.supplierLevel = {
+        enabled: document.getElementById('feat-supplier-level-enable').checked,
+        options: getCheckedValues('feat-supplier-level')
+    };
+    cfg.envStandard = {
+        enabled: document.getElementById('feat-env-standard-enable').checked,
+        options: getCheckedValues('feat-env-standard')
+    };
+    syncCurrentProductToArray();
+    saveToStorage();
+    alert('特性配置已保存。点击「特性同步刷新」可将配置同步到最优成本测算执行面板。');
+}
+
+function getCheckedValues(name) {
+    var boxes = document.querySelectorAll('input[name="' + name + '"]:checked');
+    var vals = [];
+    for (var i = 0; i < boxes.length; i++) vals.push(boxes[i].value);
+    return vals;
+}
+
+function loadFeatureConfig() {
+    var cfg = appData.featureConfig || {};
+    if (cfg.materialGrade) {
+        document.getElementById('feat-material-grade-enable').checked = cfg.materialGrade.enabled;
+        setCheckedValues('feat-material-grade', cfg.materialGrade.options);
+        toggleFeatureCard('material-grade');
+    }
+    if (cfg.processBaseline) {
+        document.getElementById('feat-process-baseline-enable').checked = cfg.processBaseline.enabled;
+        setCheckedValues('feat-process-baseline', cfg.processBaseline.options);
+        toggleFeatureCard('process-baseline');
+    }
+    if (cfg.supplierLevel) {
+        document.getElementById('feat-supplier-level-enable').checked = cfg.supplierLevel.enabled;
+        setCheckedValues('feat-supplier-level', cfg.supplierLevel.options);
+        toggleFeatureCard('supplier-level');
+    }
+    if (cfg.envStandard) {
+        document.getElementById('feat-env-standard-enable').checked = cfg.envStandard.enabled;
+        setCheckedValues('feat-env-standard', cfg.envStandard.options);
+        toggleFeatureCard('env-standard');
+    }
+}
+
+function setCheckedValues(name, values) {
+    var boxes = document.querySelectorAll('input[name="' + name + '"]');
+    for (var i = 0; i < boxes.length; i++) {
+        boxes[i].checked = values && values.indexOf(boxes[i].value) >= 0;
+    }
+}
+
+// ==================== 物料特性关联 ====================
+
+function renderMaterialFeatureLinks() {
+    var tbody = document.getElementById('material-feature-link-tbody');
+    if (!tbody) return;
+    var links = appData.materialFeatureLinks || [];
+    var currentCode = appData.currentProductCode;
+    var filtered = [];
+    for (var i = 0; i < links.length; i++) {
+        if (links[i].productCode === currentCode) filtered.push(links[i]);
+    }
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+        var item = filtered[i];
+        var matCoeff = item.materialCoeff || 1.0;
+        var procCoeff = item.processCoeff || 1.0;
+        var suppCoeff = item.supplierCoeff || 1.0;
+        var envCoeff = item.envCoeff || 1.0;
+        var totalCoeff = (matCoeff * procCoeff * suppCoeff * envCoeff).toFixed(3);
+        var charPrice = (item.basePrice * parseFloat(totalCoeff)).toFixed(2);
+        html += '<tr>';
+        html += '<td>' + (item.materialCode || '-') + '</td>';
+        html += '<td>' + (item.materialName || '-') + '</td>';
+        html += '<td>¥' + (item.basePrice !== undefined ? item.basePrice.toFixed(2) : '-') + '</td>';
+        html += '<td>' + (item.isCharacteristic ? '是' : '否') + '</td>';
+        html += '<td>' + matCoeff.toFixed(2) + '</td>';
+        html += '<td>' + procCoeff.toFixed(2) + '</td>';
+        html += '<td>' + suppCoeff.toFixed(2) + '</td>';
+        html += '<td>' + envCoeff.toFixed(2) + '</td>';
+        html += '<td><b>' + totalCoeff + '</b></td>';
+        html += '<td style="color:var(--success);font-weight:600">¥' + charPrice + '</td>';
+        html += '<td class="table-actions">';
+        html += '<button class="btn btn-secondary btn-sm" onclick="editMaterialFeatureLink(' + item.id + ')">编辑</button> ';
+        html += '<button class="btn btn-danger btn-sm" onclick="deleteMaterialFeatureLink(' + item.id + ')">删除</button>';
+        html += '</td>';
+        html += '</tr>';
+    }
+    if (filtered.length === 0) {
+        html += '<tr><td colspan="11" style="text-align:center;color:#999;padding:20px">暂无数据，请先配置成本要素或直接添加关联</td></tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function addMaterialFeatureLink() {
+    var materials = [];
+    for (var i = 0; i < appData.semiFinished.length; i++) {
+        materials.push({code: appData.semiFinished[i].code, name: appData.semiFinished[i].name, price: appData.semiFinished[i].price});
+    }
+    for (var i = 0; i < appData.packaging.length; i++) {
+        materials.push({code: appData.packaging[i].code, name: appData.packaging[i].name, price: appData.packaging[i].price});
+    }
+    var ceMats = (appData.costElements && appData.costElements.materialElements) ? appData.costElements.materialElements : [];
+    for (var i = 0; i < ceMats.length; i++) {
+        var found = false;
+        for (var j = 0; j < materials.length; j++) {
+            if (materials[j].code === ceMats[i].materialCode) { found = true; break; }
+        }
+        if (!found) {
+            materials.push({code: ceMats[i].materialCode, name: ceMats[i].materialName, price: ceMats[i].unitPrice || 0});
+        }
+    }
+    if (materials.length === 0) {
+        alert('当前产品暂无物料数据。请先配置成本要素或在报价测算中添加物料。');
+        return;
+    }
+    var selectHtml = '<select id="mfl-material">';
+    for (var i = 0; i < materials.length; i++) {
+        selectHtml += '<option value="' + materials[i].code + '|' + materials[i].name + '|' + materials[i].price + '">' + materials[i].code + ' ' + materials[i].name + ' ¥' + materials[i].price + '</option>';
+    }
+    selectHtml += '</select>';
+    var html = '<div class="form-grid">';
+    html += '<div class="form-group"><label>选择物料 <span style="color:var(--danger)">*</span></label>' + selectHtml + '</div>';
+    html += '<div class="form-group"><label>是否特性化 <span style="color:var(--danger)">*</span></label><select id="mfl-isChar"><option value="1">是</option><option value="0">否</option></select></div>';
+    html += '<div class="form-group"><label>材料等级系数</label><input type="number" id="mfl-matCoeff" value="1.0" step="0.01"></div>';
+    html += '<div class="form-group"><label>工艺基准系数</label><input type="number" id="mfl-procCoeff" value="1.0" step="0.01"></div>';
+    html += '<div class="form-group"><label>供应商系数</label><input type="number" id="mfl-suppCoeff" value="1.0" step="0.01"></div>';
+    html += '<div class="form-group"><label>环保系数</label><input type="number" id="mfl-envCoeff" value="1.0" step="0.01"></div>';
+    html += '</div>';
+    openModal('新增物料特性关联', html, function() {
+        var sel = document.getElementById('mfl-material').value.split('|');
+        if (!appData.materialFeatureLinks) appData.materialFeatureLinks = [];
+        var id = 1;
+        for (var i = 0; i < appData.materialFeatureLinks.length; i++) {
+            if (appData.materialFeatureLinks[i].id >= id) id = appData.materialFeatureLinks[i].id + 1;
+        }
+        appData.materialFeatureLinks.push({
+            id: id,
+            productCode: appData.currentProductCode,
+            materialCode: sel[0],
+            materialName: sel[1],
+            basePrice: parseFloat(sel[2]) || 0,
+            isCharacteristic: document.getElementById('mfl-isChar').value === '1',
+            materialCoeff: parseFloat(document.getElementById('mfl-matCoeff').value) || 1.0,
+            processCoeff: parseFloat(document.getElementById('mfl-procCoeff').value) || 1.0,
+            supplierCoeff: parseFloat(document.getElementById('mfl-suppCoeff').value) || 1.0,
+            envCoeff: parseFloat(document.getElementById('mfl-envCoeff').value) || 1.0
+        });
+        syncCurrentProductToArray();
+        saveToStorage();
+        renderMaterialFeatureLinks();
+    });
+}
+
+function editMaterialFeatureLink(id) {
+    var links = appData.materialFeatureLinks || [];
+    var item = null;
+    for (var i = 0; i < links.length; i++) { if (links[i].id === id) { item = links[i]; break; } }
+    if (!item) return;
+    var html = '<div class="form-grid">';
+    html += '<div class="form-group"><label>物料</label><input type="text" value="' + item.materialCode + ' ' + item.materialName + '" readonly></div>';
+    html += '<div class="form-group"><label>是否特性化</label><select id="mfl-edit-isChar"><option value="1"' + (item.isCharacteristic ? ' selected' : '') + '>是</option><option value="0"' + (!item.isCharacteristic ? ' selected' : '') + '>否</option></select></div>';
+    html += '<div class="form-group"><label>材料等级系数</label><input type="number" id="mfl-edit-matCoeff" value="' + (item.materialCoeff || 1.0) + '" step="0.01"></div>';
+    html += '<div class="form-group"><label>工艺基准系数</label><input type="number" id="mfl-edit-procCoeff" value="' + (item.processCoeff || 1.0) + '" step="0.01"></div>';
+    html += '<div class="form-group"><label>供应商系数</label><input type="number" id="mfl-edit-suppCoeff" value="' + (item.supplierCoeff || 1.0) + '" step="0.01"></div>';
+    html += '<div class="form-group"><label>环保系数</label><input type="number" id="mfl-edit-envCoeff" value="' + (item.envCoeff || 1.0) + '" step="0.01"></div>';
+    html += '</div>';
+    openModal('编辑物料特性关联', html, function() {
+        item.isCharacteristic = document.getElementById('mfl-edit-isChar').value === '1';
+        item.materialCoeff = parseFloat(document.getElementById('mfl-edit-matCoeff').value) || 1.0;
+        item.processCoeff = parseFloat(document.getElementById('mfl-edit-procCoeff').value) || 1.0;
+        item.supplierCoeff = parseFloat(document.getElementById('mfl-edit-suppCoeff').value) || 1.0;
+        item.envCoeff = parseFloat(document.getElementById('mfl-edit-envCoeff').value) || 1.0;
+        syncCurrentProductToArray();
+        saveToStorage();
+        renderMaterialFeatureLinks();
+    });
+}
+
+function deleteMaterialFeatureLink(id) {
+    if (!confirm('确认删除该物料特性关联？')) return;
+    var newArr = [];
+    for (var i = 0; i < appData.materialFeatureLinks.length; i++) {
+        if (appData.materialFeatureLinks[i].id !== id) newArr.push(appData.materialFeatureLinks[i]);
+    }
+    appData.materialFeatureLinks = newArr;
+    syncCurrentProductToArray();
+    saveToStorage();
+    renderMaterialFeatureLinks();
+}
+
+function exportMaterialFeatureLinks() {
+    var links = (appData.materialFeatureLinks || []).filter(function(l) { return l.productCode === appData.currentProductCode; });
+    var rows = [['物料编码','物料名称','固定单价','是否特性化','材料等级系数','工艺基准系数','供应商系数','环保系数','综合系数','特性化单价']];
+    for (var i = 0; i < links.length; i++) {
+        var l = links[i];
+        var total = (l.materialCoeff * l.processCoeff * l.supplierCoeff * l.envCoeff).toFixed(3);
+        rows.push([l.materialCode, l.materialName, l.basePrice, l.isCharacteristic ? '是' : '否', l.materialCoeff, l.processCoeff, l.supplierCoeff, l.envCoeff, total, (l.basePrice * parseFloat(total)).toFixed(2)]);
+    }
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '物料特性关联');
+    XLSX.writeFile(wb, '物料特性关联_' + appData.currentProductCode + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
+function importMaterialFeatureLinks(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var data = new Uint8Array(e.target.result);
+            var workbook = XLSX.read(data, {type: 'array'});
+            var sheet = workbook.Sheets[workbook.SheetNames[0]];
+            var rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+            var count = 0;
+            if (!appData.materialFeatureLinks) appData.materialFeatureLinks = [];
+            for (var i = 1; i < rows.length; i++) {
+                var r = rows[i];
+                if (!r[0]) continue;
+                var id = 1;
+                for (var j = 0; j < appData.materialFeatureLinks.length; j++) {
+                    if (appData.materialFeatureLinks[j].id >= id) id = appData.materialFeatureLinks[j].id + 1;
+                }
+                appData.materialFeatureLinks.push({
+                    id: id,
+                    productCode: appData.currentProductCode,
+                    materialCode: String(r[0] || ''),
+                    materialName: String(r[1] || ''),
+                    basePrice: parseFloat(r[2]) || 0,
+                    isCharacteristic: String(r[3]) === '是',
+                    materialCoeff: parseFloat(r[4]) || 1.0,
+                    processCoeff: parseFloat(r[5]) || 1.0,
+                    supplierCoeff: parseFloat(r[6]) || 1.0,
+                    envCoeff: parseFloat(r[7]) || 1.0
+                });
+                count++;
+            }
+            syncCurrentProductToArray();
+            saveToStorage();
+            renderMaterialFeatureLinks();
+            alert('导入成功: ' + count + ' 条记录');
+        } catch(err) {
+            alert('导入失败: ' + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+    input.value = '';
+}
+
+// ==================== 特性同步刷新 + 最优成本测算执行 ====================
+
+function syncFeaturesToOptimalCalc() {
+    var cfg = appData.featureConfig || {};
+    var syncLog = [];
+
+    var selMat = document.getElementById('exec-feat-material-grade');
+    var oldMat = selMat.value;
+    selMat.innerHTML = '<option value="">-- 请选择 --</option>';
+    if (cfg.materialGrade && cfg.materialGrade.enabled && cfg.materialGrade.options.length > 0) {
+        for (var i = 0; i < cfg.materialGrade.options.length; i++) {
+            var opt = cfg.materialGrade.options[i];
+            selMat.innerHTML += '<option value="' + opt + '">' + opt + '</option>';
+        }
+        syncLog.push('材料等级: ' + cfg.materialGrade.options.join(', '));
+    }
+    if (oldMat && cfg.materialGrade && cfg.materialGrade.options.indexOf(oldMat) >= 0) selMat.value = oldMat;
+
+    var selProc = document.getElementById('exec-feat-process-baseline');
+    var oldProc = selProc.value;
+    selProc.innerHTML = '<option value="">-- 请选择 --</option>';
+    if (cfg.processBaseline && cfg.processBaseline.enabled && cfg.processBaseline.options.length > 0) {
+        for (var i = 0; i < cfg.processBaseline.options.length; i++) {
+            var opt = cfg.processBaseline.options[i];
+            selProc.innerHTML += '<option value="' + opt + '">' + opt + '</option>';
+        }
+        syncLog.push('工艺基准: ' + cfg.processBaseline.options.join(', '));
+    }
+    if (oldProc && cfg.processBaseline && cfg.processBaseline.options.indexOf(oldProc) >= 0) selProc.value = oldProc;
+
+    var selSupp = document.getElementById('exec-feat-supplier-level');
+    var oldSupp = selSupp.value;
+    selSupp.innerHTML = '<option value="">-- 请选择 --</option>';
+    if (cfg.supplierLevel && cfg.supplierLevel.enabled && cfg.supplierLevel.options.length > 0) {
+        for (var i = 0; i < cfg.supplierLevel.options.length; i++) {
+            var opt = cfg.supplierLevel.options[i];
+            selSupp.innerHTML += '<option value="' + opt + '">' + opt + '</option>';
+        }
+        syncLog.push('供应商等级: ' + cfg.supplierLevel.options.join(', '));
+    }
+    if (oldSupp && cfg.supplierLevel && cfg.supplierLevel.options.indexOf(oldSupp) >= 0) selSupp.value = oldSupp;
+
+    var selEnv = document.getElementById('exec-feat-env-standard');
+    var oldEnv = selEnv.value;
+    selEnv.innerHTML = '<option value="">-- 请选择 --</option>';
+    if (cfg.envStandard && cfg.envStandard.enabled && cfg.envStandard.options.length > 0) {
+        for (var i = 0; i < cfg.envStandard.options.length; i++) {
+            var opt = cfg.envStandard.options[i];
+            selEnv.innerHTML += '<option value="' + opt + '">' + opt + '</option>';
+        }
+        syncLog.push('环保标准: ' + cfg.envStandard.options.join(', '));
+    }
+    if (oldEnv && cfg.envStandard && cfg.envStandard.options.indexOf(oldEnv) >= 0) selEnv.value = oldEnv;
+
+    var status = document.getElementById('optimal-exec-status');
+    var hint = document.getElementById('optimal-exec-hint');
+    if (syncLog.length > 0) {
+        status.textContent = '已同步';
+        status.style.background = '#dcfce7';
+        status.style.color = '#166534';
+        hint.innerHTML = '特性已同步到最优成本测算执行面板。请选择各特性的具体取值后，点击「执行最优测算」生成结果。<br>同步内容：' + syncLog.join(' | ');
+    } else {
+        status.textContent = '无特性配置';
+        status.style.background = '#fee2e2';
+        status.style.color = '#991b1b';
+        hint.innerHTML = '未检测到启用的特性配置。请先在上方「自定义生产特性配置」中勾选并保存特性，再执行同步。';
+    }
+    renderMaterialFeatureLinks();
+}
+
+function onExecFeatureChange() {
+    var fields = ['material-grade', 'process-baseline', 'supplier-level', 'env-standard'];
+    for (var i = 0; i < fields.length; i++) {
+        var sel = document.getElementById('exec-feat-' + fields[i]);
+        var badge = document.getElementById('exec-feat-' + fields[i] + '-badge');
+        if (sel && badge) {
+            if (sel.value) {
+                badge.textContent = '✓';
+                badge.style.background = 'var(--success)';
+            } else {
+                badge.textContent = 'S';
+                badge.style.background = 'var(--system-sync)';
+            }
+        }
+    }
+}
+
+function executeOptimalCostCalc() {
+    calculateAll();
+    var standardLog = window.calculationLog;
+    if (!standardLog) {
+        alert('请先确保报价测算数据完整，再进行最优成本测算。');
+        return;
+    }
+
+    var matGrade = document.getElementById('exec-feat-material-grade').value;
+    var procBase = document.getElementById('exec-feat-process-baseline').value;
+    var suppLevel = document.getElementById('exec-feat-supplier-level').value;
+    var envStd = document.getElementById('exec-feat-env-standard').value;
+    var delivery = document.getElementById('exec-feat-delivery').value;
+
+    var matCoeff = getFeatureCoefficient('material-grade', matGrade);
+    var procCoeff = getFeatureCoefficient('process-baseline', procBase);
+    var suppCoeff = getFeatureCoefficient('supplier-level', suppLevel);
+    var envCoeff = getFeatureCoefficient('env-standard', envStd);
+    var deliveryCoeff = getDeliveryCoefficient(delivery);
+
+    var totalCoeff = matCoeff * procCoeff * suppCoeff * envCoeff * deliveryCoeff;
+
+    var links = (appData.materialFeatureLinks || []).filter(function(l) { return l.productCode === appData.currentProductCode; });
+    var materialOptimal = 0;
+    var materialDetail = [];
+
+    for (var i = 0; i < standardLog.semiFinished.length; i++) {
+        var s = standardLog.semiFinished[i];
+        var link = null;
+        for (var j = 0; j < links.length; j++) {
+            if (links[j].materialCode === s.code) { link = links[j]; break; }
+        }
+        var itemCoeff = totalCoeff;
+        var itemDesc = '全局系数';
+        if (link && link.isCharacteristic) {
+            itemCoeff = link.materialCoeff * link.processCoeff * link.supplierCoeff * link.envCoeff;
+            if (matGrade) itemCoeff *= matCoeff / getFeatureCoefficient('material-grade', '');
+            if (procBase) itemCoeff *= procCoeff / getFeatureCoefficient('process-baseline', '');
+            if (suppLevel) itemCoeff *= suppCoeff / getFeatureCoefficient('supplier-level', '');
+            if (envStd) itemCoeff *= envCoeff / getFeatureCoefficient('env-standard', '');
+            itemDesc = '物料特性系数';
+        }
+        var optCost = s.finalCost * itemCoeff;
+        materialOptimal += optCost;
+        materialDetail.push({name: s.name || s.code, standard: s.finalCost, optimal: optCost, coeff: itemCoeff, desc: itemDesc});
+    }
+
+    for (var i = 0; i < standardLog.packaging.length; i++) {
+        var p = standardLog.packaging[i];
+        var link = null;
+        for (var j = 0; j < links.length; j++) {
+            if (links[j].materialCode === p.code) { link = links[j]; break; }
+        }
+        var itemCoeff = totalCoeff;
+        var itemDesc = '全局系数';
+        if (link && link.isCharacteristic) {
+            itemCoeff = link.materialCoeff * link.processCoeff * link.supplierCoeff * link.envCoeff;
+            if (matGrade) itemCoeff *= matCoeff / getFeatureCoefficient('material-grade', '');
+            if (procBase) itemCoeff *= procCoeff / getFeatureCoefficient('process-baseline', '');
+            if (suppLevel) itemCoeff *= suppCoeff / getFeatureCoefficient('supplier-level', '');
+            if (envStd) itemCoeff *= envCoeff / getFeatureCoefficient('env-standard', '');
+            itemDesc = '物料特性系数';
+        }
+        var optCost = p.finalCost * itemCoeff;
+        materialOptimal += optCost;
+        materialDetail.push({name: p.name || p.code, standard: p.finalCost, optimal: optCost, coeff: itemCoeff, desc: itemDesc});
+    }
+
+    var laborOptimal = 0;
+    var laborDetail = [];
+    for (var i = 0; i < standardLog.processes.length; i++) {
+        var p = standardLog.processes[i];
+        var optCost = p.laborCost * procCoeff;
+        laborOptimal += optCost;
+        laborDetail.push({name: p.name || p.code, standard: p.laborCost, optimal: optCost, coeff: procCoeff, desc: '工艺基准系数'});
+    }
+
+    var mfgOptimal = 0;
+    var mfgDetail = [];
+    if (standardLog.mfg) {
+        var m = standardLog.mfg;
+        var energyOpt = m.energy * deliveryCoeff;
+        var overheadOpt = m.overhead * deliveryCoeff;
+        var auxOpt = m.aux * deliveryCoeff;
+        var equipOpt = m.equipTotal * (suppCoeff !== 1.0 ? suppCoeff : 1.0);
+        mfgOptimal = energyOpt + overheadOpt + auxOpt + equipOpt;
+        mfgDetail.push({name: '水电能耗', standard: m.energy, optimal: energyOpt, coeff: deliveryCoeff, desc: '交期系数'});
+        mfgDetail.push({name: '车间管理', standard: m.overhead, optimal: overheadOpt, coeff: deliveryCoeff, desc: '交期系数'});
+        mfgDetail.push({name: '辅料消耗', standard: m.aux, optimal: auxOpt, coeff: deliveryCoeff, desc: '交期系数'});
+        mfgDetail.push({name: '设备分摊', standard: m.equipTotal, optimal: equipOpt, coeff: (suppCoeff !== 1.0 ? suppCoeff : 1.0), desc: '供应商系数'});
+    }
+
+    var periodOptimal = standardLog.period ? standardLog.period.periodTotal * envCoeff : 0;
+    var periodDetail = [];
+    if (standardLog.period) {
+        periodDetail.push({name: '期间费用合计', standard: standardLog.period.periodTotal, optimal: periodOptimal, coeff: envCoeff, desc: '环保系数'});
+    }
+
+    var otherOptimal = standardLog.other ? standardLog.other.otherTotal * deliveryCoeff : 0;
+    var otherDetail = [];
+    if (standardLog.other) {
+        otherDetail.push({name: '其他成本', standard: standardLog.other.otherTotal, optimal: otherOptimal, coeff: deliveryCoeff, desc: '交期系数'});
+    }
+
+    var standardUnitCost = standardLog.final ? standardLog.final.finalUnitCost : 0;
+    var optimalUnitCost = materialOptimal + laborOptimal + mfgOptimal + periodOptimal + otherOptimal;
+    var diff = optimalUnitCost - standardUnitCost;
+    var targetMargin = parseFloat(document.getElementById('target-margin').value) || 20;
+    var optimalQuote = optimalUnitCost * (1 + targetMargin / 100);
+
+    var resultDiv = document.getElementById('optimal-exec-result');
+    resultDiv.style.display = 'block';
+
+    document.getElementById('exec-result-standard-cost').textContent = '¥' + standardUnitCost.toFixed(2);
+    document.getElementById('exec-result-optimal-cost').textContent = '¥' + optimalUnitCost.toFixed(2);
+    document.getElementById('exec-result-diff').textContent = (diff >= 0 ? '+' : '') + '¥' + diff.toFixed(2);
+    document.getElementById('exec-result-diff').style.color = diff > 0 ? 'var(--danger)' : 'var(--success)';
+    document.getElementById('exec-result-coefficient').textContent = totalCoeff.toFixed(3);
+    document.getElementById('exec-result-optimal-quote').textContent = '¥' + optimalQuote.toFixed(2);
+
+    var tbody = document.getElementById('optimal-exec-detail-tbody');
+    var html = '';
+    var allDetails = [];
+    for (var i = 0; i < materialDetail.length; i++) allDetails.push({...materialDetail[i], category: '直接材料'});
+    for (var i = 0; i < laborDetail.length; i++) allDetails.push({...laborDetail[i], category: '直接人工'});
+    for (var i = 0; i < mfgDetail.length; i++) allDetails.push({...mfgDetail[i], category: '制造费用'});
+    for (var i = 0; i < periodDetail.length; i++) allDetails.push({...periodDetail[i], category: '期间费用'});
+    for (var i = 0; i < otherDetail.length; i++) allDetails.push({...otherDetail[i], category: '其他成本'});
+
+    for (var i = 0; i < allDetails.length; i++) {
+        var d = allDetails[i];
+        html += '<tr>';
+        html += '<td><b>' + d.category + '</b> - ' + d.name + '</td>';
+        html += '<td>¥' + d.standard.toFixed(2) + '</td>';
+        html += '<td>' + d.coeff.toFixed(3) + '</td>';
+        html += '<td style="color:' + (d.optimal < d.standard ? 'var(--success)' : 'var(--danger)') + ';font-weight:600">¥' + d.optimal.toFixed(2) + '</td>';
+        html += '<td>' + (d.optimal - d.standard >= 0 ? '+' : '') + '¥' + (d.optimal - d.standard).toFixed(2) + '</td>';
+        html += '<td style="font-size:12px;color:var(--text-light)">' + d.desc + '</td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+
+    var status = document.getElementById('optimal-exec-status');
+    status.textContent = '测算完成';
+    status.style.background = '#dcfce7';
+    status.style.color = '#166534';
+
+    document.getElementById('optimal-exec-hint').innerHTML = '最优成本测算已完成。综合特性系数: ' + totalCoeff.toFixed(3) + ' | 标准成本: ¥' + standardUnitCost.toFixed(2) + ' | 最优成本: ¥' + optimalUnitCost.toFixed(2);
+}
+
+function getFeatureCoefficient(type, value) {
+    if (!value) return 1.0;
+    var coeffs = {
+        'material-grade': {'A级': 1.2, 'B级': 1.0, 'C级': 0.8},
+        'process-baseline': {'常规': 1.0, '精密': 1.3, '特种': 1.5},
+        'supplier-level': {'战略供应商': 0.95, '合格供应商': 1.0, '临时供应商': 1.1},
+        'env-standard': {'ROHS': 1.03, 'REACH': 1.05, '无卤要求': 1.08}
+    };
+    return (coeffs[type] && coeffs[type][value]) ? coeffs[type][value] : 1.0;
+}
+
+function getDeliveryCoefficient(delivery) {
+    if (!delivery || delivery === '正常') return 1.0;
+    if (delivery === '加急') return 1.1;
+    if (delivery === '特急') return 1.2;
+    return 1.0;
+}
 
 // ==================== END V5 ADD-ON ====================
 </script>
