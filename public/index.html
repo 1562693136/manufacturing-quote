@@ -3026,6 +3026,7 @@ function loadFromStorage() {
             if (parsed.costElementLogs) appData.costElementLogs = parsed.costElementLogs;
             if (parsed.featureConfig) appData.featureConfig = parsed.featureConfig;
             if (parsed.materialFeatureLinks) appData.materialFeatureLinks = parsed.materialFeatureLinks;
+            if (parsed.optimalCostPlans) appData.optimalCostPlans = parsed.optimalCostPlans;
             return true;
         }
     } catch(e) { console.warn('Storage load failed:', e); }
@@ -9004,6 +9005,350 @@ function getDeliveryCoefficient(delivery) {
     if (delivery === '加急') return 1.1;
     if (delivery === '特急') return 1.2;
     return 1.0;
+}
+
+function getDeliveryCoefficient(delivery) {
+    if (!delivery || delivery === '正常') return 1.0;
+    if (delivery === '加急') return 1.1;
+    if (delivery === '特急') return 1.2;
+    return 1.0;
+}
+
+// ==================== 最优成本模型计算（从报价测算页面调用）====================
+function calculateOptimalCostModel() {
+    // 检查是否有特性配置
+    var cfg = appData.featureConfig || {};
+    var hasAnyFeature = (cfg.materialGrade && cfg.materialGrade.enabled) ||
+                        (cfg.processBaseline && cfg.processBaseline.enabled) ||
+                        (cfg.supplierLevel && cfg.supplierLevel.enabled) ||
+                        (cfg.envStandard && cfg.envStandard.enabled);
+    
+    if (!hasAnyFeature) {
+        alert('未检测到启用的生产特性配置。请先在「自定义生产特性配置」中勾选并保存特性，再计算最优成本模型。');
+        return;
+    }
+    
+    // 自动同步特性到执行面板
+    syncFeaturesToOptimalCalc();
+    
+    // 显示最优成本模型区域
+    var section = document.getElementById('optimal-cost-section');
+    if (section) section.style.display = 'block';
+    
+    // 基于当前特性配置，计算并展示最优成本模型分析
+    calculateAll();
+    var standardLog = window.calculationLog;
+    if (!standardLog) {
+        alert('请先确保报价测算数据完整。');
+        return;
+    }
+    
+    // 计算各特性维度的最优值
+    var matGrade = (cfg.materialGrade && cfg.materialGrade.enabled) ? cfg.materialGrade.options[0] : '';
+    var procBase = (cfg.processBaseline && cfg.processBaseline.enabled) ? cfg.processBaseline.options[0] : '';
+    var suppLevel = (cfg.supplierLevel && cfg.supplierLevel.enabled) ? cfg.supplierLevel.options[0] : '';
+    var envStd = (cfg.envStandard && cfg.envStandard.enabled) ? cfg.envStandard.options[0] : '';
+    
+    var matCoeff = getFeatureCoefficient('material-grade', matGrade);
+    var procCoeff = getFeatureCoefficient('process-baseline', procBase);
+    var suppCoeff = getFeatureCoefficient('supplier-level', suppLevel);
+    var envCoeff = getFeatureCoefficient('env-standard', envStd);
+    
+    var totalCoeff = matCoeff * procCoeff * suppCoeff * envCoeff;
+    
+    // 构建最优成本分析表格
+    var tbody = document.getElementById('optimal-cost-tbody');
+    var summaryDiv = document.getElementById('optimal-cost-summary');
+    var actionsDiv = document.getElementById('optimal-cost-actions');
+    
+    if (!tbody) return;
+    
+    var standardUnitCost = standardLog.final ? standardLog.final.finalUnitCost : 0;
+    var optimalUnitCost = standardUnitCost * totalCoeff;
+    var diff = optimalUnitCost - standardUnitCost;
+    var targetMargin = parseFloat(document.getElementById('target-margin').value) || 20;
+    var optimalQuote = optimalUnitCost * (1 + targetMargin / 100);
+    
+    var html = '';
+    
+    // 材料成本
+    var matStandard = standardLog.material ? standardLog.material.materialTotal : 0;
+    var matOptimal = matStandard * matCoeff;
+    html += '<tr><td><b>直接材料</b></td><td>¥' + matStandard.toFixed(2) + '</td><td style="color:var(--success);font-weight:600">¥' + matOptimal.toFixed(2) + '</td><td>' + (matCoeff !== 1.0 ? (matCoeff > 1 ? '+' : '') + ((matCoeff-1)*100).toFixed(0) + '%' : '-') + '</td><td>' + (matCoeff < 1.0 ? '材料等级优化降低材料成本' : (matCoeff > 1.0 ? '高等级材料增加成本，但提升品质' : '材料成本无变化')) + '</td></tr>';
+    
+    // 人工成本
+    var laborStandard = standardLog.labor ? standardLog.labor.laborTotal : 0;
+    var laborOptimal = laborStandard * procCoeff;
+    html += '<tr><td><b>直接人工</b></td><td>¥' + laborStandard.toFixed(2) + '</td><td style="color:var(--success);font-weight:600">¥' + laborOptimal.toFixed(2) + '</td><td>' + (procCoeff !== 1.0 ? (procCoeff > 1 ? '+' : '') + ((procCoeff-1)*100).toFixed(0) + '%' : '-') + '</td><td>' + (procCoeff < 1.0 ? '工艺优化降低人工成本' : (procCoeff > 1.0 ? '精密/特种工艺增加工时成本' : '人工成本无变化')) + '</td></tr>';
+    
+    // 制造费用
+    var mfgStandard = standardLog.mfg ? standardLog.mfg.mfgTotal : 0;
+    var mfgOptimal = mfgStandard * suppCoeff;
+    html += '<tr><td><b>制造费用</b></td><td>¥' + mfgStandard.toFixed(2) + '</td><td style="color:var(--success);font-weight:600">¥' + mfgOptimal.toFixed(2) + '</td><td>' + (suppCoeff !== 1.0 ? (suppCoeff > 1 ? '+' : '') + ((suppCoeff-1)*100).toFixed(0) + '%' : '-') + '</td><td>' + (suppCoeff < 1.0 ? '战略供应商降低采购与制造成本' : (suppCoeff > 1.0 ? '临时供应商增加成本' : '制造费用无变化')) + '</td></tr>';
+    
+    // 期间费用
+    var periodStandard = standardLog.period ? standardLog.period.periodTotal : 0;
+    var periodOptimal = periodStandard * envCoeff;
+    html += '<tr><td><b>期间费用</b></td><td>¥' + periodStandard.toFixed(2) + '</td><td style="color:var(--success);font-weight:600">¥' + periodOptimal.toFixed(2) + '</td><td>' + (envCoeff !== 1.0 ? (envCoeff > 1 ? '+' : '') + ((envCoeff-1)*100).toFixed(0) + '%' : '-') + '</td><td>' + (envCoeff < 1.0 ? '环保标准优化降低附加费' : (envCoeff > 1.0 ? '高环保标准增加合规成本' : '期间费用无变化')) + '</td></tr>';
+    
+    // 合计
+    html += '<tr style="border-top:2px solid var(--border);font-weight:700;background:#f8fafc"><td><b>单位完全成本合计</b></td><td>¥' + standardUnitCost.toFixed(2) + '</td><td style="color:var(--success)">¥' + optimalUnitCost.toFixed(2) + '</td><td>' + (totalCoeff !== 1.0 ? (totalCoeff > 1 ? '+' : '') + ((totalCoeff-1)*100).toFixed(1) + '%' : '-') + '</td><td><b>综合特性系数: ' + totalCoeff.toFixed(3) + '</b></td></tr>';
+    
+    tbody.innerHTML = html;
+    
+    // 更新摘要
+    if (summaryDiv) {
+        summaryDiv.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px">' +
+            '<div style="text-align:center;padding:12px;background:#f0f9ff;border-radius:8px"><div style="font-size:12px;color:#64748b">当前单位完全成本</div><div style="font-size:20px;font-weight:700;color:#1e293b">¥' + standardUnitCost.toFixed(2) + '</div></div>' +
+            '<div style="text-align:center;padding:12px;background:#f0fdf4;border-radius:8px"><div style="font-size:12px;color:#64748b">最优单位完全成本</div><div style="font-size:20px;font-weight:700;color:#166534">¥' + optimalUnitCost.toFixed(2) + '</div></div>' +
+            '<div style="text-align:center;padding:12px;background:#fff7ed;border-radius:8px"><div style="font-size:12px;color:#64748b">差额</div><div style="font-size:20px;font-weight:700;color:#ea580c">' + (diff >= 0 ? '+' : '') + '¥' + diff.toFixed(2) + '</div></div>' +
+            '<div style="text-align:center;padding:12px;background:#faf5ff;border-radius:8px"><div style="font-size:12px;color:#64748b">建议最优报价</div><div style="font-size:20px;font-weight:700;color:#7c3aed">¥' + optimalQuote.toFixed(2) + '</div></div>' +
+            '</div>';
+    }
+    
+    // 更新操作按钮
+    if (actionsDiv) {
+        actionsDiv.innerHTML = '<button class="btn btn-success" onclick="saveOptimalCostPlan()">💾 保存测算方案</button> ' +
+            '<button class="btn btn-primary" onclick="exportOptimalCostReport()">📥 导出测算报告</button> ' +
+            '<button class="btn btn-secondary" onclick="compareOptimalScenarios()">📊 多方案对比</button> ' +
+            '<button class="btn btn-warning" onclick="goToOptimalExecution()">🎯 前往执行面板</button>';
+    }
+    
+    // 滚动到最优成本模型区域
+    section.scrollIntoView({behavior: 'smooth'});
+}
+
+// ==================== 测算方案管理 ====================
+function saveOptimalCostPlan() {
+    var cfg = appData.featureConfig || {};
+    var matGrade = document.getElementById('exec-feat-material-grade')?.value || ((cfg.materialGrade && cfg.materialGrade.enabled) ? cfg.materialGrade.options[0] : '');
+    var procBase = document.getElementById('exec-feat-process-baseline')?.value || ((cfg.processBaseline && cfg.processBaseline.enabled) ? cfg.processBaseline.options[0] : '');
+    var suppLevel = document.getElementById('exec-feat-supplier-level')?.value || ((cfg.supplierLevel && cfg.supplierLevel.enabled) ? cfg.supplierLevel.options[0] : '');
+    var envStd = document.getElementById('exec-feat-env-standard')?.value || ((cfg.envStandard && cfg.envStandard.enabled) ? cfg.envStandard.options[0] : '');
+    var delivery = document.getElementById('exec-feat-delivery')?.value || '';
+    
+    var standardLog = window.calculationLog;
+    var standardUnitCost = standardLog && standardLog.final ? standardLog.final.finalUnitCost : 0;
+    var matCoeff = getFeatureCoefficient('material-grade', matGrade);
+    var procCoeff = getFeatureCoefficient('process-baseline', procBase);
+    var suppCoeff = getFeatureCoefficient('supplier-level', suppLevel);
+    var envCoeff = getFeatureCoefficient('env-standard', envStd);
+    var deliveryCoeff = getDeliveryCoefficient(delivery);
+    var totalCoeff = matCoeff * procCoeff * suppCoeff * envCoeff * deliveryCoeff;
+    var optimalUnitCost = standardUnitCost * totalCoeff;
+    var targetMargin = parseFloat(document.getElementById('target-margin').value) || 20;
+    var optimalQuote = optimalUnitCost * (1 + targetMargin / 100);
+    
+    var planName = prompt('请输入测算方案名称（如：战略供应商+A级材料方案）：');
+    if (!planName || !planName.trim()) return;
+    
+    if (!appData.optimalCostPlans) appData.optimalCostPlans = [];
+    var plan = {
+        id: generateId(appData.optimalCostPlans),
+        name: planName.trim(),
+        productCode: appData.currentProductCode,
+        createTime: new Date().toISOString(),
+        features: {
+            materialGrade: matGrade,
+            processBaseline: procBase,
+            supplierLevel: suppLevel,
+            envStandard: envStd,
+            delivery: delivery
+        },
+        coefficients: {
+            material: matCoeff,
+            process: procCoeff,
+            supplier: suppCoeff,
+            env: envCoeff,
+            delivery: deliveryCoeff,
+            total: totalCoeff
+        },
+        standardUnitCost: standardUnitCost,
+        optimalUnitCost: optimalUnitCost,
+        optimalQuote: optimalQuote,
+        targetMargin: targetMargin,
+        materialLinks: JSON.parse(JSON.stringify(appData.materialFeatureLinks || []))
+    };
+    appData.optimalCostPlans.push(plan);
+    syncCurrentProductToArray();
+    saveToStorage();
+    alert('测算方案「' + planName.trim() + '」已保存。可在「多方案对比」中查看。');
+}
+
+function loadOptimalCostPlans() {
+    var plans = appData.optimalCostPlans || [];
+    var currentCode = appData.currentProductCode;
+    var filtered = [];
+    for (var i = 0; i < plans.length; i++) {
+        if (plans[i].productCode === currentCode) filtered.push(plans[i]);
+    }
+    return filtered;
+}
+
+function compareOptimalScenarios() {
+    var plans = loadOptimalCostPlans();
+    if (plans.length === 0) {
+        alert('暂无已保存的测算方案。请先执行「保存测算方案」。');
+        return;
+    }
+    
+    // 添加当前测算作为基准
+    var cfg = appData.featureConfig || {};
+    var matGrade = document.getElementById('exec-feat-material-grade')?.value || '';
+    var procBase = document.getElementById('exec-feat-process-baseline')?.value || '';
+    var suppLevel = document.getElementById('exec-feat-supplier-level')?.value || '';
+    var envStd = document.getElementById('exec-feat-env-standard')?.value || '';
+    var delivery = document.getElementById('exec-feat-delivery')?.value || '';
+    
+    var standardLog = window.calculationLog;
+    var standardUnitCost = standardLog && standardLog.final ? standardLog.final.finalUnitCost : 0;
+    var matCoeff = getFeatureCoefficient('material-grade', matGrade);
+    var procCoeff = getFeatureCoefficient('process-baseline', procBase);
+    var suppCoeff = getFeatureCoefficient('supplier-level', suppLevel);
+    var envCoeff = getFeatureCoefficient('env-standard', envStd);
+    var deliveryCoeff = getDeliveryCoefficient(delivery);
+    var totalCoeff = matCoeff * procCoeff * suppCoeff * envCoeff * deliveryCoeff;
+    var optimalUnitCost = standardUnitCost * totalCoeff;
+    var targetMargin = parseFloat(document.getElementById('target-margin').value) || 20;
+    var optimalQuote = optimalUnitCost * (1 + targetMargin / 100);
+    
+    var allScenarios = [{
+        name: '当前测算',
+        features: {materialGrade: matGrade, processBaseline: procBase, supplierLevel: suppLevel, envStandard: envStd, delivery: delivery},
+        coefficients: {total: totalCoeff},
+        optimalUnitCost: optimalUnitCost,
+        optimalQuote: optimalQuote,
+        isCurrent: true
+    }].concat(plans);
+    
+    var html = '<div style="overflow-x:auto"><table style="width:100%;font-size:13px"><thead><tr style="background:#f8fafc">' +
+        '<th>方案名称</th><th>材料等级</th><th>工艺基准</th><th>供应商等级</th><th>环保标准</th><th>交期</th>' +
+        '<th>综合系数</th><th>最优单位成本</th><th>建议报价</th><th>操作</th></tr></thead><tbody>';
+    
+    for (var i = 0; i < allScenarios.length; i++) {
+        var s = allScenarios[i];
+        var bgStyle = s.isCurrent ? 'style="background:#eff6ff"' : '';
+        html += '<tr ' + bgStyle + '><td><b>' + s.name + '</b>' + (s.isCurrent ? ' <span style="font-size:11px;color:#2563eb">[当前]</span>' : '') + '</td>';
+        html += '<td>' + (s.features.materialGrade || '-') + '</td>';
+        html += '<td>' + (s.features.processBaseline || '-') + '</td>';
+        html += '<td>' + (s.features.supplierLevel || '-') + '</td>';
+        html += '<td>' + (s.features.envStandard || '-') + '</td>';
+        html += '<td>' + (s.features.delivery || '-') + '</td>';
+        html += '<td><b>' + s.coefficients.total.toFixed(3) + '</b></td>';
+        html += '<td style="color:var(--success);font-weight:600">¥' + s.optimalUnitCost.toFixed(2) + '</td>';
+        html += '<td style="color:#7c3aed;font-weight:600">¥' + s.optimalQuote.toFixed(2) + '</td>';
+        html += '<td>' + (s.isCurrent ? '<span style="color:#2563eb;font-size:12px">当前执行中</span>' : '<button class="btn btn-sm btn-primary" onclick="loadOptimalPlan(' + s.id + ')">加载</button> <button class="btn btn-sm btn-danger" onclick="deleteOptimalPlan(' + s.id + ')">删除</button>') + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    
+    openModal('多方案对比分析', html, null);
+}
+
+function loadOptimalPlan(id) {
+    var plans = appData.optimalCostPlans || [];
+    var plan = null;
+    for (var i = 0; i < plans.length; i++) { if (plans[i].id === id) { plan = plans[i]; break; } }
+    if (!plan) return;
+    
+    // 加载特性到执行面板
+    document.getElementById('exec-feat-material-grade').value = plan.features.materialGrade || '';
+    document.getElementById('exec-feat-process-baseline').value = plan.features.processBaseline || '';
+    document.getElementById('exec-feat-supplier-level').value = plan.features.supplierLevel || '';
+    document.getElementById('exec-feat-env-standard').value = plan.features.envStandard || '';
+    document.getElementById('exec-feat-delivery').value = plan.features.delivery || '';
+    onExecFeatureChange();
+    
+    // 加载物料特性关联
+    if (plan.materialLinks) {
+        appData.materialFeatureLinks = JSON.parse(JSON.stringify(plan.materialLinks));
+        renderMaterialFeatureLinks();
+    }
+    
+    // 重新执行测算
+    executeOptimalCostCalc();
+    alert('已加载方案「' + plan.name + '」，并重新执行测算。');
+}
+
+function deleteOptimalPlan(id) {
+    if (!confirm('确认删除该测算方案？')) return;
+    var arr = [];
+    for (var i = 0; i < appData.optimalCostPlans.length; i++) {
+        if (appData.optimalCostPlans[i].id !== id) arr.push(appData.optimalCostPlans[i]);
+    }
+    appData.optimalCostPlans = arr;
+    syncCurrentProductToArray();
+    saveToStorage();
+    compareOptimalScenarios();
+}
+
+function exportOptimalCostReport() {
+    var standardLog = window.calculationLog;
+    if (!standardLog) { alert('请先执行测算'); return; }
+    
+    var cfg = appData.featureConfig || {};
+    var matGrade = document.getElementById('exec-feat-material-grade')?.value || '';
+    var procBase = document.getElementById('exec-feat-process-baseline')?.value || '';
+    var suppLevel = document.getElementById('exec-feat-supplier-level')?.value || '';
+    var envStd = document.getElementById('exec-feat-env-standard')?.value || '';
+    var delivery = document.getElementById('exec-feat-delivery')?.value || '';
+    
+    var matCoeff = getFeatureCoefficient('material-grade', matGrade);
+    var procCoeff = getFeatureCoefficient('process-baseline', procBase);
+    var suppCoeff = getFeatureCoefficient('supplier-level', suppLevel);
+    var envCoeff = getFeatureCoefficient('env-standard', envStd);
+    var deliveryCoeff = getDeliveryCoefficient(delivery);
+    var totalCoeff = matCoeff * procCoeff * suppCoeff * envCoeff * deliveryCoeff;
+    
+    var standardUnitCost = standardLog.final ? standardLog.final.finalUnitCost : 0;
+    var optimalUnitCost = standardUnitCost * totalCoeff;
+    var targetMargin = parseFloat(document.getElementById('target-margin').value) || 20;
+    var optimalQuote = optimalUnitCost * (1 + targetMargin / 100);
+    
+    var report = '最优成本测算报告\n';
+    report += '==================\n\n';
+    report += '产品编码: ' + (appData.currentProductCode || '-') + '\n';
+    report += '产品名称: ' + (appData.product.name || '-') + '\n';
+    report += '测算时间: ' + new Date().toLocaleString() + '\n\n';
+    report += '【特性配置】\n';
+    report += '材料等级: ' + (matGrade || '未选择') + ' (系数: ' + matCoeff + ')\n';
+    report += '工艺基准: ' + (procBase || '未选择') + ' (系数: ' + procCoeff + ')\n';
+    report += '供应商等级: ' + (suppLevel || '未选择') + ' (系数: ' + suppCoeff + ')\n';
+    report += '环保标准: ' + (envStd || '未选择') + ' (系数: ' + envCoeff + ')\n';
+    report += '交期要求: ' + (delivery || '正常') + ' (系数: ' + deliveryCoeff + ')\n';
+    report += '综合特性系数: ' + totalCoeff.toFixed(3) + '\n\n';
+    report += '【成本对比】\n';
+    report += '标准单位完全成本: ¥' + standardUnitCost.toFixed(2) + '\n';
+    report += '最优单位完全成本: ¥' + optimalUnitCost.toFixed(2) + '\n';
+    report += '差额: ' + (optimalUnitCost - standardUnitCost >= 0 ? '+' : '') + '¥' + (optimalUnitCost - standardUnitCost).toFixed(2) + '\n';
+    report += '建议报价(毛利' + targetMargin + '%): ¥' + optimalQuote.toFixed(2) + '\n\n';
+    report += '【物料特性关联】\n';
+    var links = appData.materialFeatureLinks || [];
+    var filtered = [];
+    for (var i = 0; i < links.length; i++) { if (links[i].productCode === appData.currentProductCode) filtered.push(links[i]); }
+    if (filtered.length === 0) {
+        report += '无物料特性关联数据\n';
+    } else {
+        for (var i = 0; i < filtered.length; i++) {
+            var l = filtered[i];
+            var total = (l.materialCoeff * l.processCoeff * l.supplierCoeff * l.envCoeff).toFixed(3);
+            report += l.materialCode + ' ' + l.materialName + ': 综合系数=' + total + (l.isCharacteristic ? ' [已特性化]' : ' [未特性化]') + '\n';
+        }
+    }
+    
+    var blob = new Blob([report], {type: 'text/plain;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '最优成本测算报告_' + (appData.currentProductCode || 'unknown') + '_' + new Date().toISOString().slice(0,10) + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function goToOptimalExecution() {
+    var section = document.getElementById('optimal-cost-execution-section');
+    if (section) section.scrollIntoView({behavior: 'smooth'});
 }
 
 // ==================== 报价分析看板 ====================
