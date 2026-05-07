@@ -8781,15 +8781,20 @@ function renderMaterialFeatureLinks() {
         var envCoeff = item.envCoeff || 1.0;
         var totalCoeff = (matCoeff * procCoeff * suppCoeff * envCoeff).toFixed(3);
         var charPrice = (item.basePrice * parseFloat(totalCoeff)).toFixed(2);
+        // 显示特性名称
+        var matLabel = item.materialGrade ? (item.materialGrade + ' ×' + matCoeff.toFixed(2)) : matCoeff.toFixed(2);
+        var procLabel = item.processBaseline ? (item.processBaseline + ' ×' + procCoeff.toFixed(2)) : procCoeff.toFixed(2);
+        var suppLabel = item.supplierLevel ? (item.supplierLevel + ' ×' + suppCoeff.toFixed(2)) : suppCoeff.toFixed(2);
+        var envLabel = item.envStandard ? (item.envStandard + ' ×' + envCoeff.toFixed(2)) : envCoeff.toFixed(2);
         html += '<tr>';
         html += '<td>' + (item.materialCode || '-') + '</td>';
         html += '<td>' + (item.materialName || '-') + '</td>';
         html += '<td>¥' + (item.basePrice !== undefined ? item.basePrice.toFixed(2) : '-') + '</td>';
-        html += '<td>' + (item.isCharacteristic ? '是' : '否') + '</td>';
-        html += '<td>' + matCoeff.toFixed(2) + '</td>';
-        html += '<td>' + procCoeff.toFixed(2) + '</td>';
-        html += '<td>' + suppCoeff.toFixed(2) + '</td>';
-        html += '<td>' + envCoeff.toFixed(2) + '</td>';
+        html += '<td>' + (item.isCharacteristic ? '<span style="color:var(--success);font-weight:600">是</span>' : '否') + '</td>';
+        html += '<td>' + matLabel + '</td>';
+        html += '<td>' + procLabel + '</td>';
+        html += '<td>' + suppLabel + '</td>';
+        html += '<td>' + envLabel + '</td>';
         html += '<td><b>' + totalCoeff + '</b></td>';
         html += '<td style="color:var(--success);font-weight:600">¥' + charPrice + '</td>';
         html += '<td class="table-actions">';
@@ -8831,16 +8836,34 @@ function addMaterialFeatureLink() {
         selectHtml += '<option value="' + materials[i].code + '|' + materials[i].name + '|' + materials[i].price + '">' + materials[i].code + ' ' + materials[i].name + ' ¥' + materials[i].price + '</option>';
     }
     selectHtml += '</select>';
+    
+    // 从特性配置生成系数下拉选项
+    function buildCoeffSelect(id, typeKey, defaultCoeff) {
+        var cfg = appData.featureConfig || {};
+        var items = (cfg[typeKey] && cfg[typeKey].enabled && cfg[typeKey].items) ? cfg[typeKey].items.filter(function(x){return x.checked}) : [];
+        var html = '<select id="' + id + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius)">';
+        html += '<option value="' + (defaultCoeff || 1.0) + '|">-- 请选择 --</option>';
+        for (var i = 0; i < items.length; i++) {
+            html += '<option value="' + items[i].coeff + '|' + items[i].name + '">' + items[i].name + ' (×' + items[i].coeff + ')</option>';
+        }
+        html += '</select>';
+        return html;
+    }
+    
     var html = '<div class="form-grid">';
     html += '<div class="form-group"><label>选择物料 <span style="color:var(--danger)">*</span></label>' + selectHtml + '</div>';
     html += '<div class="form-group"><label>是否特性化 <span style="color:var(--danger)">*</span></label><select id="mfl-isChar"><option value="1">是</option><option value="0">否</option></select></div>';
-    html += '<div class="form-group"><label>材料等级系数</label><input type="number" id="mfl-matCoeff" value="1.0" step="0.01"></div>';
-    html += '<div class="form-group"><label>工艺基准系数</label><input type="number" id="mfl-procCoeff" value="1.0" step="0.01"></div>';
-    html += '<div class="form-group"><label>供应商系数</label><input type="number" id="mfl-suppCoeff" value="1.0" step="0.01"></div>';
-    html += '<div class="form-group"><label>环保系数</label><input type="number" id="mfl-envCoeff" value="1.0" step="0.01"></div>';
+    html += '<div class="form-group"><label>材料等级系数</label>' + buildCoeffSelect('mfl-matCoeff', 'material-grade', 1.0) + '</div>';
+    html += '<div class="form-group"><label>工艺基准系数</label>' + buildCoeffSelect('mfl-procCoeff', 'process-baseline', 1.0) + '</div>';
+    html += '<div class="form-group"><label>供应商系数</label>' + buildCoeffSelect('mfl-suppCoeff', 'supplier-level', 1.0) + '</div>';
+    html += '<div class="form-group"><label>环保系数</label>' + buildCoeffSelect('mfl-envCoeff', 'env-standard', 1.0) + '</div>';
     html += '</div>';
     openModal('新增物料特性关联', html, function() {
         var sel = document.getElementById('mfl-material').value.split('|');
+        var matCoeffVal = document.getElementById('mfl-matCoeff').value.split('|');
+        var procCoeffVal = document.getElementById('mfl-procCoeff').value.split('|');
+        var suppCoeffVal = document.getElementById('mfl-suppCoeff').value.split('|');
+        var envCoeffVal = document.getElementById('mfl-envCoeff').value.split('|');
         if (!appData.materialFeatureLinks) appData.materialFeatureLinks = [];
         var id = 1;
         for (var i = 0; i < appData.materialFeatureLinks.length; i++) {
@@ -8853,10 +8876,14 @@ function addMaterialFeatureLink() {
             materialName: sel[1],
             basePrice: parseFloat(sel[2]) || 0,
             isCharacteristic: document.getElementById('mfl-isChar').value === '1',
-            materialCoeff: parseFloat(document.getElementById('mfl-matCoeff').value) || 1.0,
-            processCoeff: parseFloat(document.getElementById('mfl-procCoeff').value) || 1.0,
-            supplierCoeff: parseFloat(document.getElementById('mfl-suppCoeff').value) || 1.0,
-            envCoeff: parseFloat(document.getElementById('mfl-envCoeff').value) || 1.0
+            materialCoeff: parseFloat(matCoeffVal[0]) || 1.0,
+            processCoeff: parseFloat(procCoeffVal[0]) || 1.0,
+            supplierCoeff: parseFloat(suppCoeffVal[0]) || 1.0,
+            envCoeff: parseFloat(envCoeffVal[0]) || 1.0,
+            materialGrade: matCoeffVal[1] || '',
+            processBaseline: procCoeffVal[1] || '',
+            supplierLevel: suppCoeffVal[1] || '',
+            envStandard: envCoeffVal[1] || ''
         });
         syncCurrentProductToArray();
         saveToStorage();
@@ -8869,20 +8896,46 @@ function editMaterialFeatureLink(id) {
     var item = null;
     for (var i = 0; i < links.length; i++) { if (links[i].id === id) { item = links[i]; break; } }
     if (!item) return;
+    
+    function buildCoeffSelect(id, typeKey, currentCoeff, currentName) {
+        var cfg = appData.featureConfig || {};
+        var items = (cfg[typeKey] && cfg[typeKey].enabled && cfg[typeKey].items) ? cfg[typeKey].items.filter(function(x){return x.checked}) : [];
+        var html = '<select id="' + id + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius)">';
+        var selected = false;
+        for (var i = 0; i < items.length; i++) {
+            var isSel = (items[i].name === currentName || Math.abs(items[i].coeff - currentCoeff) < 0.001);
+            if (isSel) selected = true;
+            html += '<option value="' + items[i].coeff + '|' + items[i].name + '"' + (isSel ? ' selected' : '') + '>' + items[i].name + ' (×' + items[i].coeff + ')</option>';
+        }
+        if (!selected && currentCoeff) {
+            html = '<option value="' + currentCoeff + '|' + (currentName || '') + '" selected>' + (currentName || '自定义') + ' (×' + currentCoeff + ')</option>' + html;
+        }
+        html += '</select>';
+        return html;
+    }
+    
     var html = '<div class="form-grid">';
     html += '<div class="form-group"><label>物料</label><input type="text" value="' + item.materialCode + ' ' + item.materialName + '" readonly></div>';
     html += '<div class="form-group"><label>是否特性化</label><select id="mfl-edit-isChar"><option value="1"' + (item.isCharacteristic ? ' selected' : '') + '>是</option><option value="0"' + (!item.isCharacteristic ? ' selected' : '') + '>否</option></select></div>';
-    html += '<div class="form-group"><label>材料等级系数</label><input type="number" id="mfl-edit-matCoeff" value="' + (item.materialCoeff || 1.0) + '" step="0.01"></div>';
-    html += '<div class="form-group"><label>工艺基准系数</label><input type="number" id="mfl-edit-procCoeff" value="' + (item.processCoeff || 1.0) + '" step="0.01"></div>';
-    html += '<div class="form-group"><label>供应商系数</label><input type="number" id="mfl-edit-suppCoeff" value="' + (item.supplierCoeff || 1.0) + '" step="0.01"></div>';
-    html += '<div class="form-group"><label>环保系数</label><input type="number" id="mfl-edit-envCoeff" value="' + (item.envCoeff || 1.0) + '" step="0.01"></div>';
+    html += '<div class="form-group"><label>材料等级系数</label>' + buildCoeffSelect('mfl-edit-matCoeff', 'material-grade', item.materialCoeff, item.materialGrade) + '</div>';
+    html += '<div class="form-group"><label>工艺基准系数</label>' + buildCoeffSelect('mfl-edit-procCoeff', 'process-baseline', item.processCoeff, item.processBaseline) + '</div>';
+    html += '<div class="form-group"><label>供应商系数</label>' + buildCoeffSelect('mfl-edit-suppCoeff', 'supplier-level', item.supplierCoeff, item.supplierLevel) + '</div>';
+    html += '<div class="form-group"><label>环保系数</label>' + buildCoeffSelect('mfl-edit-envCoeff', 'env-standard', item.envCoeff, item.envStandard) + '</div>';
     html += '</div>';
     openModal('编辑物料特性关联', html, function() {
+        var matCoeffVal = document.getElementById('mfl-edit-matCoeff').value.split('|');
+        var procCoeffVal = document.getElementById('mfl-edit-procCoeff').value.split('|');
+        var suppCoeffVal = document.getElementById('mfl-edit-suppCoeff').value.split('|');
+        var envCoeffVal = document.getElementById('mfl-edit-envCoeff').value.split('|');
         item.isCharacteristic = document.getElementById('mfl-edit-isChar').value === '1';
-        item.materialCoeff = parseFloat(document.getElementById('mfl-edit-matCoeff').value) || 1.0;
-        item.processCoeff = parseFloat(document.getElementById('mfl-edit-procCoeff').value) || 1.0;
-        item.supplierCoeff = parseFloat(document.getElementById('mfl-edit-suppCoeff').value) || 1.0;
-        item.envCoeff = parseFloat(document.getElementById('mfl-edit-envCoeff').value) || 1.0;
+        item.materialCoeff = parseFloat(matCoeffVal[0]) || 1.0;
+        item.processCoeff = parseFloat(procCoeffVal[0]) || 1.0;
+        item.supplierCoeff = parseFloat(suppCoeffVal[0]) || 1.0;
+        item.envCoeff = parseFloat(envCoeffVal[0]) || 1.0;
+        item.materialGrade = matCoeffVal[1] || '';
+        item.processBaseline = procCoeffVal[1] || '';
+        item.supplierLevel = suppCoeffVal[1] || '';
+        item.envStandard = envCoeffVal[1] || '';
         syncCurrentProductToArray();
         saveToStorage();
         renderMaterialFeatureLinks();
