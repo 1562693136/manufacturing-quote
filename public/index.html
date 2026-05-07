@@ -1318,6 +1318,11 @@
                 </div>
                 <span style="font-size:12px;color:var(--text-light)">（可手动调整）</span>
             </div>
+            <!-- 成本要素配置状态提示 -->
+            <div id="cost-element-status-hint" style="margin-bottom:12px;padding:10px 14px;border-radius:var(--radius);font-size:13px;display:flex;align-items:center;gap:8px;justify-content:space-between">
+                <span id="cost-element-status-text"></span>
+                <button class="btn btn-primary btn-sm" id="btn-goto-cost-config" onclick="goToCostMaintain()" style="display:none">🔧 前往配置成本要素</button>
+            </div>
             <div style="display:flex;gap:12px">
                 <button class="btn btn-success" onclick="confirmFinalPrice()">✅ 确认定价</button>
                 <button class="btn btn-secondary" onclick="goToCostMaintain()">🔧 返回修改成本</button>
@@ -4128,27 +4133,56 @@ function clearForm() {
 
 function updateQuotationFlowHint() {
     var hint = document.getElementById('quotation-flow-hint');
-    if (!hint) return;
+    var statusDiv = document.getElementById('cost-element-status-hint');
+    var statusText = document.getElementById('cost-element-status-text');
+    var btnGoto = document.getElementById('btn-goto-cost-config');
     var code = document.getElementById('p-code').value.trim();
-    var hasCost = false;
-    if (code && appData.costElements) {
-        var ce = appData.costElements;
-        var hasMaterial = ce.materialElements && ce.materialElements.some(function(e) { return e.productCode === code; });
-        var hasLabor = ce.laborElements && ce.laborElements.some(function(e) { return e.productCode === code; });
-        var hasMfg = ce.mfgElements && ce.mfgElements.some(function(e) { return e.productCode === code; });
-        var hasPeriod = ce.periodElements && ce.periodElements.some(function(e) { return e.productCode === code; });
-        hasCost = hasMaterial || hasLabor || hasMfg || hasPeriod;
+    
+    var ceStatus = checkCostElementsConfigured(code);
+    var hasCost = ceStatus.configured;
+    var missing = ceStatus.missing;
+    
+    // 更新流程提示
+    if (hint) {
+        if (code && hasCost) {
+            hint.innerHTML = '✅ 该产品已配置完整成本要素（材料/人工/制造/期间），可直接确认价格';
+            hint.style.color = 'var(--success)';
+            hint.style.background = '#f0fdf4';
+            hint.style.borderColor = '#bbf7d0';
+        } else if (code && missing.length > 0) {
+            hint.innerHTML = '⚠️ 该产品尚未配置完整成本要素，缺失：' + missing.join('、') + '。建议先配置后再确认价格';
+            hint.style.color = 'var(--warning)';
+            hint.style.background = '#fffbeb';
+            hint.style.borderColor = '#fde68a';
+        } else {
+            hint.innerHTML = '📋 流程：填写产品基础信息 → 💾 保存并配置成本 → 💰 创建报价单';
+            hint.style.color = 'var(--info)';
+            hint.style.background = '#eff6ff';
+            hint.style.borderColor = '#bfdbfe';
+        }
     }
-    if (code && hasCost) {
-        hint.innerHTML = '✅ 该产品已配置成本要素，可直接创建报价单';
-        hint.style.color = 'var(--success)';
-        hint.style.background = '#f0fdf4';
-        hint.style.borderColor = '#bbf7d0';
-    } else {
-        hint.innerHTML = '📋 流程：填写产品基础信息 → 💾 保存并配置成本 → 💰 创建报价单';
-        hint.style.color = 'var(--info)';
-        hint.style.background = '#eff6ff';
-        hint.style.borderColor = '#bfdbfe';
+    
+    // 更新价格确认区域状态提示
+    if (statusDiv && statusText) {
+        if (code && hasCost) {
+            statusText.innerHTML = '✅ 成本要素已完整配置（材料/人工/制造/期间）';
+            statusDiv.style.background = '#f0fdf4';
+            statusDiv.style.border = '1px solid #bbf7d0';
+            statusDiv.style.color = '#166534';
+            if (btnGoto) btnGoto.style.display = 'none';
+        } else if (code && missing.length > 0) {
+            statusText.innerHTML = '⚠️ 成本要素未完整配置，缺失：' + missing.join('、') + '。确认价格可能不准确';
+            statusDiv.style.background = '#fffbeb';
+            statusDiv.style.border = '1px solid #fde68a';
+            statusDiv.style.color = '#92400e';
+            if (btnGoto) btnGoto.style.display = 'inline-block';
+        } else {
+            statusText.innerHTML = 'ℹ️ 请先填写产品编码和名称，并配置成本要素';
+            statusDiv.style.background = '#eff6ff';
+            statusDiv.style.border = '1px solid #bfdbfe';
+            statusDiv.style.color = 'var(--info)';
+            if (btnGoto) btnGoto.style.display = 'none';
+        }
     }
 }
 
@@ -7444,6 +7478,82 @@ function switchCostElementProduct(code) {
     syncCurrentProductToArray();
     var ok = loadProductToTop(code);
     if (ok) {
+        // 自动初始化该产品的成本要素数据结构
+        if (!appData.costElements) appData.costElements = { materialElements: [], laborElements: [], mfgElements: [], periodElements: [] };
+        var ce = appData.costElements;
+        var hasMaterial = ce.materialElements && ce.materialElements.some(function(e) { return e.productCode === code; });
+        var hasLabor = ce.laborElements && ce.laborElements.some(function(e) { return e.productCode === code; });
+        var hasMfg = ce.mfgElements && ce.mfgElements.some(function(e) { return e.productCode === code; });
+        var hasPeriod = ce.periodElements && ce.periodElements.some(function(e) { return e.productCode === code; });
+        if (!hasMaterial || !hasLabor || !hasMfg || !hasPeriod) {
+            var prod = getProductByCode(code);
+            var prodName = (prod && prod.product && prod.product.name) ? prod.product.name : '';
+            // 自动创建一条示例记录，方便用户理解
+            if (!hasMaterial) {
+                ce.materialElements.push({
+                    id: generateId(ce.materialElements),
+                    productCode: code,
+                    productName: prodName,
+                    materialCode: 'MAT-' + code,
+                    materialName: '示例材料（请修改）',
+                    spec: '-',
+                    unit: '件',
+                    unitPrice: 0,
+                    lossRate: 0,
+                    category: '原材料',
+                    supplier: '-',
+                    remark: '自动初始化',
+                    updateTime: new Date().toISOString()
+                });
+            }
+            if (!hasLabor) {
+                ce.laborElements.push({
+                    id: generateId(ce.laborElements),
+                    productCode: code,
+                    productName: prodName,
+                    processCode: 'PR-' + code,
+                    processName: '示例工序（请修改）',
+                    processType: '常规',
+                    workshop: '-',
+                    unitTime: 0,
+                    unitPrice: 0,
+                    lossRate: 0,
+                    remark: '自动初始化',
+                    updateTime: new Date().toISOString()
+                });
+            }
+            if (!hasMfg) {
+                ce.mfgElements.push({
+                    id: generateId(ce.mfgElements),
+                    productCode: code,
+                    productName: prodName,
+                    costCode: 'MFG-' + code,
+                    costName: '示例制造费用（请修改）',
+                    costType: '直接分摊',
+                    allocation: '按产量',
+                    unitPrice: 0,
+                    lossRate: 0,
+                    remark: '自动初始化',
+                    updateTime: new Date().toISOString()
+                });
+            }
+            if (!hasPeriod) {
+                ce.periodElements.push({
+                    id: generateId(ce.periodElements),
+                    productCode: code,
+                    productName: prodName,
+                    costCode: 'PER-' + code,
+                    costName: '示例期间费用（请修改）',
+                    costType: '销售费用',
+                    calcMethod: '比例',
+                    unitPrice: 0,
+                    fixedAmount: 0,
+                    lossRate: 0,
+                    remark: '自动初始化',
+                    updateTime: new Date().toISOString()
+                });
+            }
+        }
         renderAll();
         calculateAll();
         renderProductSelector();
