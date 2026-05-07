@@ -826,17 +826,18 @@
         </div>
     </div>
 
-    <!-- ==================== 自定义生产特性配置 + 物料特性关联 (V5 FEATURE MODULE) ==================== -->
+    <!-- ==================== 自定义生产特性配置 (V5 FEATURE MODULE - 完整版) ==================== -->
     <div class="card" id="feature-config-section" style="margin-top:20px">
         <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
             <div class="card-title">⚙️ 自定义生产特性配置</div>
             <div style="display:flex;gap:8px;align-items:center">
-                <span style="font-size:12px;color:var(--text-light)">勾选启用特性，系统将基于特性进行最优成本测算</span>
+                <span style="font-size:12px;color:var(--text-light)">勾选启用特性，系统将基于特性进行最优成本测算；支持新增/编辑/删除特性选项</span>
                 <button class="btn btn-primary btn-sm" onclick="saveFeatureConfig()">💾 保存特性配置</button>
             </div>
         </div>
         <div class="card-body">
             <div class="form-grid" style="grid-template-columns: repeat(4, 1fr)">
+                <!-- 材料等级 -->
                 <div class="form-group">
                     <label class="form-label" style="display:flex;align-items:center;gap:6px">
                         <input type="checkbox" id="feat-material-grade-enable" onchange="toggleFeatureCard('material-grade')">
@@ -844,11 +845,15 @@
                     </label>
                     <div id="card-material-grade" style="padding:12px;background:#f8fafc;border-radius:8px;opacity:0.5;transition:opacity 0.2s">
                         <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">影响材料单价系数</div>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-material-grade" value="A级" checked> A级（系数1.2）</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-material-grade" value="B级" checked> B级（系数1.0）</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" name="feat-material-grade" value="C级"> C级（系数0.8）</label>
+                        <div id="feat-material-grade-list"></div>
+                        <div style="display:flex;gap:6px;margin-top:8px">
+                            <input type="text" id="add-mg-name" placeholder="选项名称" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px">
+                            <input type="number" id="add-mg-coeff" placeholder="系数" value="1.0" step="0.01" style="width:60px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px">
+                            <button class="btn btn-primary btn-sm" onclick="addFeatureOption('material-grade')" style="padding:4px 10px;font-size:12px">+</button>
+                        </div>
                     </div>
                 </div>
+                <!-- 工艺基准 -->
                 <div class="form-group">
                     <label class="form-label" style="display:flex;align-items:center;gap:6px">
                         <input type="checkbox" id="feat-process-baseline-enable" onchange="toggleFeatureCard('process-baseline')">
@@ -856,11 +861,15 @@
                     </label>
                     <div id="card-process-baseline" style="padding:12px;background:#f8fafc;border-radius:8px;opacity:0.5;transition:opacity 0.2s">
                         <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">影响工时与工价</div>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-process-baseline" value="常规" checked> 常规（标准工时）</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-process-baseline" value="精密"> 精密（工时×1.3）</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" name="feat-process-baseline" value="特种"> 特种（工时×1.5）</label>
+                        <div id="feat-process-baseline-list"></div>
+                        <div style="display:flex;gap:6px;margin-top:8px">
+                            <input type="text" id="add-pb-name" placeholder="选项名称" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px">
+                            <input type="number" id="add-pb-coeff" placeholder="系数" value="1.0" step="0.01" style="width:60px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px">
+                            <button class="btn btn-primary btn-sm" onclick="addFeatureOption('process-baseline')" style="padding:4px 10px;font-size:12px">+</button>
+                        </div>
                     </div>
                 </div>
+                <!-- 供应商等级 -->
                 <div class="form-group">
                     <label class="form-label" style="display:flex;align-items:center;gap:6px">
                         <input type="checkbox" id="feat-supplier-level-enable" onchange="toggleFeatureCard('supplier-level')">
@@ -868,11 +877,15 @@
                     </label>
                     <div id="card-supplier-level" style="padding:12px;background:#f8fafc;border-radius:8px;opacity:0.5;transition:opacity 0.2s">
                         <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">影响采购单价与交期</div>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-supplier-level" value="战略供应商" checked> 战略供应商（单价×0.95）</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-supplier-level" value="合格供应商"> 合格供应商（单价×1.0）</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" name="feat-supplier-level" value="临时供应商"> 临时供应商（单价×1.1）</label>
+                        <div id="feat-supplier-level-list"></div>
+                        <div style="display:flex;gap:6px;margin-top:8px">
+                            <input type="text" id="add-sl-name" placeholder="选项名称" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px">
+                            <input type="number" id="add-sl-coeff" placeholder="系数" value="1.0" step="0.01" style="width:60px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px">
+                            <button class="btn btn-primary btn-sm" onclick="addFeatureOption('supplier-level')" style="padding:4px 10px;font-size:12px">+</button>
+                        </div>
                     </div>
                 </div>
+                <!-- 环保标准 -->
                 <div class="form-group">
                     <label class="form-label" style="display:flex;align-items:center;gap:6px">
                         <input type="checkbox" id="feat-env-standard-enable" onchange="toggleFeatureCard('env-standard')">
@@ -880,9 +893,12 @@
                     </label>
                     <div id="card-env-standard" style="padding:12px;background:#f8fafc;border-radius:8px;opacity:0.5;transition:opacity 0.2s">
                         <div style="font-size:12px;color:var(--text-light);margin-bottom:8px">影响材料成本附加费</div>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-env-standard" value="ROHS" checked> ROHS（+3%）</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px"><input type="checkbox" name="feat-env-standard" value="REACH"> REACH（+5%）</label>
-                        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" name="feat-env-standard" value="无卤要求"> 无卤要求（+8%）</label>
+                        <div id="feat-env-standard-list"></div>
+                        <div style="display:flex;gap:6px;margin-top:8px">
+                            <input type="text" id="add-es-name" placeholder="选项名称" style="flex:1;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px">
+                            <input type="number" id="add-es-coeff" placeholder="系数" value="1.0" step="0.01" style="width:60px;padding:4px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px">
+                            <button class="btn btn-primary btn-sm" onclick="addFeatureOption('env-standard')" style="padding:4px 10px;font-size:12px">+</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -8478,79 +8494,271 @@ var __origLoadV5 = window.addEventListener;
 
 // ==================== 自定义生产特性配置 (V5 FEATURE MODULE) ====================
 
-function toggleFeatureCard(cardId) {
-    var checkbox = document.getElementById('feat-' + cardId + '-enable');
-    var card = document.getElementById('card-' + cardId);
-    if (!checkbox || !card) return;
-    if (checkbox.checked) {
-        card.style.opacity = '1';
-        card.style.pointerEvents = 'auto';
-    } else {
-        card.style.opacity = '0.5';
-        card.style.pointerEvents = 'none';
+function renderFeatureConfig() {
+    var defaults = {
+        'material-grade': [
+            {name:'A级', coeff:1.2, checked:true, desc:'系数1.2'},
+            {name:'B级', coeff:1.0, checked:true, desc:'系数1.0'},
+            {name:'C级', coeff:0.8, checked:false, desc:'系数0.8'}
+        ],
+        'process-baseline': [
+            {name:'常规', coeff:1.0, checked:true, desc:'标准工时'},
+            {name:'精密', coeff:1.3, checked:false, desc:'工时×1.3'},
+            {name:'特种', coeff:1.5, checked:false, desc:'工时×1.5'}
+        ],
+        'supplier-level': [
+            {name:'战略供应商', coeff:0.95, checked:true, desc:'单价×0.95'},
+            {name:'合格供应商', coeff:1.0, checked:false, desc:'单价×1.0'},
+            {name:'临时供应商', coeff:1.1, checked:false, desc:'单价×1.1'}
+        ],
+        'env-standard': [
+            {name:'ROHS', coeff:1.03, checked:true, desc:'+3%'},
+            {name:'REACH', coeff:1.05, checked:false, desc:'+5%'},
+            {name:'无卤要求', coeff:1.08, checked:false, desc:'+8%'}
+        ]
+    };
+    var cfg = appData.featureConfig || {};
+    
+    var types = ['material-grade', 'process-baseline', 'supplier-level', 'env-standard'];
+    for (var t = 0; t < types.length; t++) {
+        var type = types[t];
+        var listDiv = document.getElementById('feat-' + type + '-list');
+        if (!listDiv) continue;
+        
+        var items = (cfg[type] && cfg[type].items) ? cfg[type].items : JSON.parse(JSON.stringify(defaults[type]));
+        var html = '';
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px" id="feat-row-' + type + '-' + i + '">';
+            html += '<input type="checkbox" id="feat-chk-' + type + '-' + i + '"' + (item.checked ? ' checked' : '') + ' style="margin:0">';
+            html += '<span style="font-size:13px;flex:1">' + item.name + '（' + item.desc + '）</span>';
+            html += '<input type="number" id="feat-coeff-' + type + '-' + i + '" value="' + item.coeff + '" step="0.01" style="width:55px;padding:2px 4px;font-size:12px;border:1px solid var(--border);border-radius:4px;text-align:center">';
+            html += '<button class="btn btn-danger btn-sm" onclick="deleteFeatureOption(\'' + type + '\',' + i + ')" style="padding:2px 6px;font-size:11px" title="删除">×</button>';
+            html += '</div>';
+        }
+        listDiv.innerHTML = html;
+        
+        // 恢复启用状态
+        var enableKey = type.replace(/-/g, '') + 'Enable';
+        var enableId = 'feat-' + type + '-enable';
+        var checkbox = document.getElementById(enableId);
+        if (checkbox && cfg[type]) {
+            checkbox.checked = cfg[type].enabled;
+            toggleFeatureCard(type);
+        }
     }
+}
+
+function addFeatureOption(type) {
+    var nameMap = {'material-grade':'mg','process-baseline':'pb','supplier-level':'sl','env-standard':'es'};
+    var prefix = nameMap[type];
+    var nameInput = document.getElementById('add-' + prefix + '-name');
+    var coeffInput = document.getElementById('add-' + prefix + '-coeff');
+    if (!nameInput || !coeffInput) return;
+    var name = nameInput.value.trim();
+    var coeff = parseFloat(coeffInput.value) || 1.0;
+    if (!name) { alert('请输入选项名称'); return; }
+    
+    if (!appData.featureConfig) appData.featureConfig = {};
+    if (!appData.featureConfig[type]) {
+        appData.featureConfig[type] = {enabled: true, items: []};
+    }
+    if (!appData.featureConfig[type].items) appData.featureConfig[type].items = [];
+    
+    // 检查是否已存在
+    for (var i = 0; i < appData.featureConfig[type].items.length; i++) {
+        if (appData.featureConfig[type].items[i].name === name) {
+            alert('该选项名称已存在'); return;
+        }
+    }
+    
+    var descMap = {
+        'material-grade': '系数' + coeff,
+        'process-baseline': (coeff > 1 ? '工时×' : '标准工时') + coeff,
+        'supplier-level': '单价×' + coeff,
+        'env-standard': (coeff > 1 ? '+' : '') + Math.round((coeff-1)*100) + '%'
+    };
+    
+    appData.featureConfig[type].items.push({
+        name: name,
+        coeff: coeff,
+        checked: true,
+        desc: descMap[type] || ('系数' + coeff)
+    });
+    
+    nameInput.value = '';
+    coeffInput.value = '1.0';
+    renderFeatureConfig();
+    // 自动同步到执行面板
+    syncFeaturesToOptimalCalc();
+    saveToStorage();
+}
+
+function deleteFeatureOption(type, index) {
+    if (!confirm('确认删除该特性选项？')) return;
+    if (!appData.featureConfig || !appData.featureConfig[type] || !appData.featureConfig[type].items) return;
+    appData.featureConfig[type].items.splice(index, 1);
+    renderFeatureConfig();
+    syncFeaturesToOptimalCalc();
+    saveToStorage();
 }
 
 function saveFeatureConfig() {
     if (!appData.featureConfig) appData.featureConfig = {};
-    var cfg = appData.featureConfig;
-    cfg.materialGrade = {
-        enabled: document.getElementById('feat-material-grade-enable').checked,
-        options: getCheckedValues('feat-material-grade')
-    };
-    cfg.processBaseline = {
-        enabled: document.getElementById('feat-process-baseline-enable').checked,
-        options: getCheckedValues('feat-process-baseline')
-    };
-    cfg.supplierLevel = {
-        enabled: document.getElementById('feat-supplier-level-enable').checked,
-        options: getCheckedValues('feat-supplier-level')
-    };
-    cfg.envStandard = {
-        enabled: document.getElementById('feat-env-standard-enable').checked,
-        options: getCheckedValues('feat-env-standard')
-    };
+    var types = ['material-grade', 'process-baseline', 'supplier-level', 'env-standard'];
+    
+    for (var t = 0; t < types.length; t++) {
+        var type = types[t];
+        var enabled = document.getElementById('feat-' + type + '-enable').checked;
+        var items = [];
+        var listDiv = document.getElementById('feat-' + type + '-list');
+        if (listDiv) {
+            var rows = listDiv.querySelectorAll('[id^="feat-row-' + type + '-"]');
+            for (var i = 0; i < rows.length; i++) {
+                var chk = rows[i].querySelector('input[type="checkbox"]');
+                var coeffInput = rows[i].querySelector('input[type="number"]');
+                var nameSpan = rows[i].querySelector('span');
+                if (nameSpan) {
+                    var text = nameSpan.textContent;
+                    var nameMatch = text.match(/^([^（]+)/);
+                    var name = nameMatch ? nameMatch[1].trim() : text;
+                    var descMatch = text.match(/（([^）]+)）/);
+                    var desc = descMatch ? descMatch[1] : '';
+                    items.push({
+                        name: name,
+                        coeff: coeffInput ? parseFloat(coeffInput.value) || 1.0 : 1.0,
+                        checked: chk ? chk.checked : false,
+                        desc: desc
+                    });
+                }
+            }
+        }
+        appData.featureConfig[type] = {
+            enabled: enabled,
+            items: items
+        };
+    }
+    
     syncCurrentProductToArray();
     saveToStorage();
-    alert('特性配置已保存。点击「特性同步刷新」可将配置同步到最优成本测算执行面板。');
-}
-
-function getCheckedValues(name) {
-    var boxes = document.querySelectorAll('input[name="' + name + '"]:checked');
-    var vals = [];
-    for (var i = 0; i < boxes.length; i++) vals.push(boxes[i].value);
-    return vals;
+    syncFeaturesToOptimalCalc();
+    alert('特性配置已保存，并实时同步到最优成本测算执行面板。');
 }
 
 function loadFeatureConfig() {
+    renderFeatureConfig();
+}
+
+function getCheckedValues(name) {
+    var type = name.replace('feat-', '');
     var cfg = appData.featureConfig || {};
-    if (cfg.materialGrade) {
-        document.getElementById('feat-material-grade-enable').checked = cfg.materialGrade.enabled;
-        setCheckedValues('feat-material-grade', cfg.materialGrade.options);
-        toggleFeatureCard('material-grade');
+    if (cfg[type] && cfg[type].items) {
+        var vals = [];
+        for (var i = 0; i < cfg[type].items.length; i++) {
+            if (cfg[type].items[i].checked) vals.push(cfg[type].items[i].name);
+        }
+        return vals;
     }
-    if (cfg.processBaseline) {
-        document.getElementById('feat-process-baseline-enable').checked = cfg.processBaseline.enabled;
-        setCheckedValues('feat-process-baseline', cfg.processBaseline.options);
-        toggleFeatureCard('process-baseline');
-    }
-    if (cfg.supplierLevel) {
-        document.getElementById('feat-supplier-level-enable').checked = cfg.supplierLevel.enabled;
-        setCheckedValues('feat-supplier-level', cfg.supplierLevel.options);
-        toggleFeatureCard('supplier-level');
-    }
-    if (cfg.envStandard) {
-        document.getElementById('feat-env-standard-enable').checked = cfg.envStandard.enabled;
-        setCheckedValues('feat-env-standard', cfg.envStandard.options);
-        toggleFeatureCard('env-standard');
-    }
+    return [];
 }
 
 function setCheckedValues(name, values) {
-    var boxes = document.querySelectorAll('input[name="' + name + '"]');
-    for (var i = 0; i < boxes.length; i++) {
-        boxes[i].checked = values && values.indexOf(boxes[i].value) >= 0;
+    // 新版本由 renderFeatureConfig 处理，此函数保持兼容
+}
+
+function getFeatureCoefficient(type, value) {
+    if (!value) return 1.0;
+    var cfg = appData.featureConfig || {};
+    var typeKey = type;
+    if (cfg[typeKey] && cfg[typeKey].items) {
+        for (var i = 0; i < cfg[typeKey].items.length; i++) {
+            if (cfg[typeKey].items[i].name === value) {
+                return cfg[typeKey].items[i].coeff || 1.0;
+            }
+        }
     }
+    // Fallback to old hardcoded values
+    var coeffs = {
+        'material-grade': {'A级': 1.2, 'B级': 1.0, 'C级': 0.8},
+        'process-baseline': {'常规': 1.0, '精密': 1.3, '特种': 1.5},
+        'supplier-level': {'战略供应商': 0.95, '合格供应商': 1.0, '临时供应商': 1.1},
+        'env-standard': {'ROHS': 1.03, 'REACH': 1.05, '无卤要求': 1.08}
+    };
+    return (coeffs[type] && coeffs[type][value]) ? coeffs[type][value] : 1.0;
+}
+
+function syncFeaturesToOptimalCalc() {
+    var cfg = appData.featureConfig || {};
+    var syncLog = [];
+
+    var selMat = document.getElementById('exec-feat-material-grade');
+    var oldMat = selMat ? selMat.value : '';
+    if (selMat) {
+        selMat.innerHTML = '<option value="">-- 请选择 --</option>';
+        if (cfg['material-grade'] && cfg['material-grade'].enabled && cfg['material-grade'].items.length > 0) {
+            for (var i = 0; i < cfg['material-grade'].items.length; i++) {
+                var item = cfg['material-grade'].items[i];
+                if (item.checked) {
+                    selMat.innerHTML += '<option value="' + item.name + '">' + item.name + ' (×' + item.coeff + ')</option>';
+                }
+            }
+            syncLog.push('材料等级: ' + cfg['material-grade'].items.filter(function(x){return x.checked}).map(function(x){return x.name}).join(', '));
+        }
+        if (oldMat && cfg['material-grade'] && cfg['material-grade'].items.some(function(x){return x.name === oldMat && x.checked})) selMat.value = oldMat;
+    }
+
+    var selProc = document.getElementById('exec-feat-process-baseline');
+    var oldProc = selProc ? selProc.value : '';
+    if (selProc) {
+        selProc.innerHTML = '<option value="">-- 请选择 --</option>';
+        if (cfg['process-baseline'] && cfg['process-baseline'].enabled && cfg['process-baseline'].items.length > 0) {
+            for (var i = 0; i < cfg['process-baseline'].items.length; i++) {
+                var item = cfg['process-baseline'].items[i];
+                if (item.checked) selProc.innerHTML += '<option value="' + item.name + '">' + item.name + ' (×' + item.coeff + ')</option>';
+            }
+            syncLog.push('工艺基准: ' + cfg['process-baseline'].items.filter(function(x){return x.checked}).map(function(x){return x.name}).join(', '));
+        }
+        if (oldProc && cfg['process-baseline'] && cfg['process-baseline'].items.some(function(x){return x.name === oldProc && x.checked})) selProc.value = oldProc;
+    }
+
+    var selSupp = document.getElementById('exec-feat-supplier-level');
+    var oldSupp = selSupp ? selSupp.value : '';
+    if (selSupp) {
+        selSupp.innerHTML = '<option value="">-- 请选择 --</option>';
+        if (cfg['supplier-level'] && cfg['supplier-level'].enabled && cfg['supplier-level'].items.length > 0) {
+            for (var i = 0; i < cfg['supplier-level'].items.length; i++) {
+                var item = cfg['supplier-level'].items[i];
+                if (item.checked) selSupp.innerHTML += '<option value="' + item.name + '">' + item.name + ' (×' + item.coeff + ')</option>';
+            }
+            syncLog.push('供应商等级: ' + cfg['supplier-level'].items.filter(function(x){return x.checked}).map(function(x){return x.name}).join(', '));
+        }
+        if (oldSupp && cfg['supplier-level'] && cfg['supplier-level'].items.some(function(x){return x.name === oldSupp && x.checked})) selSupp.value = oldSupp;
+    }
+
+    var selEnv = document.getElementById('exec-feat-env-standard');
+    var oldEnv = selEnv ? selEnv.value : '';
+    if (selEnv) {
+        selEnv.innerHTML = '<option value="">-- 请选择 --</option>';
+        if (cfg['env-standard'] && cfg['env-standard'].enabled && cfg['env-standard'].items.length > 0) {
+            for (var i = 0; i < cfg['env-standard'].items.length; i++) {
+                var item = cfg['env-standard'].items[i];
+                if (item.checked) selEnv.innerHTML += '<option value="' + item.name + '">' + item.name + ' (×' + item.coeff + ')</option>';
+            }
+            syncLog.push('环保标准: ' + cfg['env-standard'].items.filter(function(x){return x.checked}).map(function(x){return x.name}).join(', '));
+        }
+        if (oldEnv && cfg['env-standard'] && cfg['env-standard'].items.some(function(x){return x.name === oldEnv && x.checked})) selEnv.value = oldEnv;
+    }
+
+    var status = document.getElementById('optimal-exec-status');
+    var hint = document.getElementById('optimal-exec-hint');
+    if (syncLog.length > 0) {
+        if (status) { status.textContent = '已同步'; status.style.background = '#dcfce7'; status.style.color = '#166534'; }
+        if (hint) hint.innerHTML = '特性已同步到最优成本测算执行面板。请选择各特性的具体取值后，点击「执行最优测算」生成结果。<br>同步内容：' + syncLog.join(' | ');
+    } else {
+        if (status) { status.textContent = '无特性配置'; status.style.background = '#fee2e2'; status.style.color = '#991b1b'; }
+        if (hint) hint.innerHTML = '未检测到启用的特性配置。请先在「自定义生产特性配置」中勾选并保存特性，再执行同步。';
+    }
+    renderMaterialFeatureLinks();
 }
 
 // ==================== 物料特性关联 ====================
