@@ -2965,7 +2965,6 @@ function buildProductDataFromTop(code) {
         rawMaterials: JSON.parse(JSON.stringify(appData.rawMaterials)),
         bomRelations: JSON.parse(JSON.stringify(appData.bomRelations)),
         bomVersions: JSON.parse(JSON.stringify(appData.bomVersions)),
-        quotationHistory: JSON.parse(JSON.stringify(appData.quotationHistory)),
         quotations: JSON.parse(JSON.stringify(appData.quotations || [])),
         costLogs: JSON.parse(JSON.stringify(appData.costLogs || [])),
         costMaterial: JSON.parse(JSON.stringify(appData.costMaterial || [])),
@@ -3016,7 +3015,6 @@ function loadProductToTop(code) {
     if (prod.rawMaterials) appData.rawMaterials = JSON.parse(JSON.stringify(prod.rawMaterials));
     if (prod.bomRelations) appData.bomRelations = JSON.parse(JSON.stringify(prod.bomRelations));
     if (prod.bomVersions) appData.bomVersions = JSON.parse(JSON.stringify(prod.bomVersions));
-    if (prod.quotationHistory) appData.quotationHistory = JSON.parse(JSON.stringify(prod.quotationHistory));
     if (prod.quotations) appData.quotations = JSON.parse(JSON.stringify(prod.quotations));
     if (prod.costLogs) appData.costLogs = JSON.parse(JSON.stringify(prod.costLogs));
     if (prod.costMaterial) appData.costMaterial = JSON.parse(JSON.stringify(prod.costMaterial));
