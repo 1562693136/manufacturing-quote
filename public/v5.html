@@ -3951,8 +3951,18 @@ function confirmFinalPrice() {
         if (!confirm('最终报价低于单位完全成本，确定要确认吗？')) return;
     }
 
-    // 保存到当前产品
+    // 流程锁定：检查成本要素是否已配置
     var code = appData.currentProductCode || currentProductCode;
+    var ceStatus = checkCostElementsConfigured(code);
+    if (!ceStatus.configured) {
+        var msg = '该产品尚未在「成本要素维护」中配置完整成本数据。';
+        msg += '\n\n缺失项：' + ceStatus.missing.join('、');
+        msg += '\n\n建议先前往「成本要素维护」页面配置，否则价格确认可能不准确。';
+        msg += '\n\n是否仍要继续确认价格？';
+        if (!confirm(msg)) return;
+    }
+
+    // 保存到当前产品
     syncCurrentProductToArray();
     var idx = -1;
     for (var i = 0; i < appData.products.length; i++) {
@@ -7241,12 +7251,131 @@ function setQuoteCustomCost() {
     alert('已设为仅本次报价生效的自定义成本');
 }
 
-// ========== 预留接口（暂不开发） ==========
+// ========== 预留接口实现 ==========
+function checkCostElementsConfigured(productCode) {
+    var prod = getProductByCode(productCode);
+    var ce = (prod && prod.costElements) ? prod.costElements : null;
+    var missing = [];
+    if (!ce || !ce.material || ce.material.length === 0) missing.push('直接材料');
+    if (!ce || !ce.labor || ce.labor.length === 0) missing.push('直接人工');
+    if (!ce || !ce.mfg || ce.mfg.length === 0) missing.push('制造费用');
+    if (!ce || !ce.period || ce.period.length === 0) missing.push('期间费用');
+    return { configured: missing.length === 0, missing: missing };
+}
+
+function initQuoteCompare() {
+    var html = '<div style="margin-bottom:16px">';
+    html += '<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">';
+    html += '<div><label style="font-size:12px;color:var(--text-light)">报价单 A</label><select id="qc-a" class="form-control" style="width:220px" onchange="renderQuoteCompare()"><option value="">请选择</option></select></div>';
+    html += '<div><label style="font-size:12px;color:var(--text-light)">报价单 B</label><select id="qc-b" class="form-control" style="width:220px" onchange="renderQuoteCompare()"><option value="">请选择</option></select></div>';
+    html += '</div>';
+    html += '<div id="qc-result" style="background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:16px;min-height:120px"><p style="color:#999;font-size:13px">请选择两个报价单进行对比分析</p></div>';
+    html += '</div>';
+    openModal('报价对比分析', html, function() { return true; });
+    var opts = '';
+    var data = appData.quotationHistory || [];
+    for (var i = 0; i < data.length; i++) {
+        opts += '<option value="' + data[i].id + '">' + (data[i].quoteNo || '-') + ' | ' + (data[i].productCode || '-') + ' | ¥' + (data[i].quote || 0) + ' | ' + (data[i].createTime || '') + '</option>';
+    }
+    var sa = document.getElementById('qc-a');
+    var sb = document.getElementById('qc-b');
+    if (sa) sa.innerHTML = '<option value="">请选择</option>' + opts;
+    if (sb) sb.innerHTML = '<option value="">请选择</option>' + opts;
+}
+
+function renderQuoteCompare() {
+    var idA = document.getElementById('qc-a')?.value;
+    var idB = document.getElementById('qc-b')?.value;
+    var div = document.getElementById('qc-result');
+    if (!idA || !idB || !div) return;
+    var a = appData.quotationHistory.find(function(x) { return x.id == idA; });
+    var b = appData.quotationHistory.find(function(x) { return x.id == idB; });
+    if (!a || !b) { div.innerHTML = '<p style="color:#999">无法加载报价单数据</p>'; return; }
+    var html = '<table style="width:100%;font-size:13px;border-collapse:collapse">';
+    html += '<thead><tr style="border-bottom:2px solid #e2e8f0"><th style="text-align:left;padding:8px">对比项</th><th style="text-align:right;padding:8px">报价单 A</th><th style="text-align:right;padding:8px">报价单 B</th><th style="text-align:right;padding:8px">差异</th></tr></thead>';
+    html += '<tbody>';
+    var rows = [
+        ['报价编号', a.quoteNo, b.quoteNo, false],
+        ['产品编码', a.productCode, b.productCode, false],
+        ['产品名称', a.productName, b.productName, false],
+        ['客户', a.customer, b.customer, false],
+        ['报价金额', '¥' + (a.quote || 0).toFixed(2), '¥' + (b.quote || 0).toFixed(2), true],
+        ['单位成本', '¥' + (a.unitCost || 0).toFixed(2), '¥' + (b.unitCost || 0).toFixed(2), true],
+        ['毛利率', (a.margin || 0) + '%', (b.margin || 0) + '%', true],
+        ['产量', (a.volume || 0).toLocaleString(), (b.volume || 0).toLocaleString(), true],
+        ['创建时间', a.createTime, b.createTime, false]
+    ];
+    for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        var diff = '';
+        if (r[3] && typeof r[1] === 'string' && typeof r[2] === 'string') {
+            var v1 = parseFloat(r[1].replace(/[¥,%]/g, '')) || 0;
+            var v2 = parseFloat(r[2].replace(/[¥,%]/g, '')) || 0;
+            var d = v2 - v1;
+            var pct = v1 !== 0 ? (d / v1 * 100) : 0;
+            var color = d > 0 ? 'var(--danger)' : d < 0 ? 'var(--success)' : 'var(--text-light)';
+            diff = '<span style="color:' + color + '">' + (d > 0 ? '+' : '') + d.toFixed(2) + ' (' + (pct > 0 ? '+' : '') + pct.toFixed(1) + '%)</span>';
+        }
+        html += '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:8px">' + r[0] + '</td><td style="padding:8px;text-align:right">' + r[1] + '</td><td style="padding:8px;text-align:right">' + r[2] + '</td><td style="padding:8px;text-align:right">' + diff + '</td></tr>';
+    }
+    html += '</tbody></table>';
+    div.innerHTML = html;
+}
+
+function initCostAlert() {
+    var html = '<div id="ca-list" style="max-height:400px;overflow-y:auto"></div>';
+    openModal('成本异常预警', html, function() { return true; });
+    renderCostAlertList();
+}
+
+function renderCostAlertList() {
+    var div = document.getElementById('ca-list');
+    if (!div) return;
+    var alerts = [];
+    var data = appData.quotationHistory || [];
+    for (var i = 0; i < data.length; i++) {
+        var q = data[i];
+        var margin = parseFloat(q.margin) || 0;
+        var unitCost = parseFloat(q.unitCost) || 0;
+        var quote = parseFloat(q.quote) || 0;
+        if (margin < 10) {
+            alerts.push({ level: 'high', msg: '报价单 ' + (q.quoteNo || '-') + ' 毛利率仅 ' + margin.toFixed(1) + '%，低于10%预警线', q: q });
+        }
+        if (quote > 0 && unitCost / quote > 0.95) {
+            alerts.push({ level: 'high', msg: '报价单 ' + (q.quoteNo || '-') + ' 成本占报价比高达 ' + ((unitCost/quote*100)).toFixed(1) + '%，利润极度压缩', q: q });
+        }
+        if (margin > 50) {
+            alerts.push({ level: 'low', msg: '报价单 ' + (q.quoteNo || '-') + ' 毛利率高达 ' + margin.toFixed(1) + '%，可能存在定价过高风险', q: q });
+        }
+    }
+    if (alerts.length === 0) {
+        div.innerHTML = '<div style="text-align:center;padding:40px;color:var(--success)"><div style="font-size:32px;margin-bottom:12px">✅</div><div>暂无成本异常预警</div></div>';
+        return;
+    }
+    var html = '';
+    for (var j = 0; j < alerts.length; j++) {
+        var a = alerts[j];
+        var color = a.level === 'high' ? 'var(--danger)' : 'var(--warning)';
+        var bg = a.level === 'high' ? '#fef2f2' : '#fffbeb';
+        html += '<div style="padding:12px 16px;border-radius:6px;margin-bottom:8px;background:' + bg + ';border-left:3px solid ' + color + '">';
+        html += '<div style="font-size:13px;color:' + color + ';font-weight:600;margin-bottom:4px">' + (a.level === 'high' ? '⚠️ 高风险' : '⚡ 提示') + '</div>';
+        html += '<div style="font-size:13px">' + a.msg + '</div>';
+        html += '</div>';
+    }
+    div.innerHTML = html;
+}
+
+function initApprovalFlow() {
+    var html = '<div style="text-align:center;padding:40px;color:#999"><div style="font-size:32px;margin-bottom:12px">🔒</div><div>报价审批流程模块</div><div style="font-size:12px;margin-top:8px">该功能将在后续版本开发，支持多级审批、审批意见记录、审批状态追踪。</div></div>';
+    openModal('报价审批流程', html, function() { return true; });
+}
+
+function initBomSync() {
+    var html = '<div style="text-align:center;padding:40px;color:#999"><div style="font-size:32px;margin-bottom:12px">🔗</div><div>BOM成本自动同步模块</div><div style="font-size:12px;margin-top:8px">该功能将在后续版本开发，支持BOM变更自动触发成本重算、版本联动更新。</div></div>';
+    openModal('BOM成本自动同步', html, function() { return true; });
+}
+
 function initCustomerModule() { /* 客户管理预留 */ }
-function initApprovalFlow() { /* 报价审批流程预留 */ }
-function initCostAlert() { /* 成本异常预警预留 */ }
-function initQuoteCompare() { /* 报价对比分析预留 */ }
-function initBomSync() { /* BOM成本自动同步预留 */ }
 function initMobileAdapt() { /* 移动端适配预留 */ }
 
 // ==================== END COST MAINTENANCE MODULE ====================
