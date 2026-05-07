@@ -2924,6 +2924,8 @@ function loadFromStorage() {
             if (parsed.costOther) appData.costOther = parsed.costOther;
             if (parsed.costElements) appData.costElements = parsed.costElements;
             if (parsed.costElementLogs) appData.costElementLogs = parsed.costElementLogs;
+            if (parsed.featureConfig) appData.featureConfig = parsed.featureConfig;
+            if (parsed.materialFeatureLinks) appData.materialFeatureLinks = parsed.materialFeatureLinks;
             return true;
         }
     } catch(e) { console.warn('Storage load failed:', e); }
@@ -2973,6 +2975,8 @@ function buildProductDataFromTop(code) {
         costOther: JSON.parse(JSON.stringify(appData.costOther || [])),
         costElements: JSON.parse(JSON.stringify(appData.costElements || { materialElements: [], laborElements: [], mfgElements: [], periodElements: [] })),
         costElementLogs: JSON.parse(JSON.stringify(appData.costElementLogs || [])),
+        featureConfig: JSON.parse(JSON.stringify(appData.featureConfig || {})),
+        materialFeatureLinks: JSON.parse(JSON.stringify(appData.materialFeatureLinks || [])),
         currentEffectiveQuote: null
     };
 }
@@ -3022,6 +3026,8 @@ function loadProductToTop(code) {
     if (prod.costOther) appData.costOther = JSON.parse(JSON.stringify(prod.costOther));
     if (prod.costElements) appData.costElements = JSON.parse(JSON.stringify(prod.costElements));
     if (prod.costElementLogs) appData.costElementLogs = JSON.parse(JSON.stringify(prod.costElementLogs));
+    if (prod.featureConfig) appData.featureConfig = JSON.parse(JSON.stringify(prod.featureConfig));
+    if (prod.materialFeatureLinks) appData.materialFeatureLinks = JSON.parse(JSON.stringify(prod.materialFeatureLinks));
     return true;
 }
 
@@ -3082,6 +3088,10 @@ function addNewProduct() {
         costMfg: [],
         costPeriod: [],
         costOther: [],
+        costElements: { materialElements: [], laborElements: [], mfgElements: [], periodElements: [] },
+        costElementLogs: [],
+        featureConfig: {},
+        materialFeatureLinks: [],
         currentEffectiveQuote: null
     };
     appData.products.push(blankProduct);
@@ -5957,6 +5967,8 @@ loadFromStorage = function() {
             if (parsed.quotations) appData.quotations = parsed.quotations;
             if (parsed.costElements) appData.costElements = parsed.costElements;
             if (parsed.costElementLogs) appData.costElementLogs = parsed.costElementLogs;
+            if (parsed.featureConfig) appData.featureConfig = parsed.featureConfig;
+            if (parsed.materialFeatureLinks) appData.materialFeatureLinks = parsed.materialFeatureLinks;
         }
     } catch(e) { console.warn('New data merge failed:', e); }
     return ok;
@@ -8027,6 +8039,8 @@ var __origLoadV5 = window.addEventListener;
         setTimeout(function() {
             migrateOldCostData();
             renderCostElementPage();
+            loadFeatureConfig();
+            renderMaterialFeatureLinks();
         }, 100);
     };
 })();
